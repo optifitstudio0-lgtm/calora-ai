@@ -14,7 +14,7 @@ import * as Linking from 'expo-linking';
 
 // --- استيراد الشاشات ---
 import SplashScreen from './Splash';
-import IndexScreen from './Index';
+import IndexScreen from './Index'; 
 import SignInScreen from './signin';
 import SignUpScreen from './signup';
 import ForgotPasswordScreen from './forgotpassword';
