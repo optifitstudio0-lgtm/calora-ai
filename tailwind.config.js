@@ -12,6 +12,6 @@ module.exports = {
     extend: {},
   },
   plugins: [],
-  // ✅ This is the crucial line you need to add
+  // ✅ This is the crucial line you need to add 
   presets: [require('nativewind/preset')], 
 };
