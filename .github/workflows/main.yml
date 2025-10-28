@@ -33,11 +33,9 @@ jobs:
       - name: Check and fix package versions
         run: npx expo install --fix
 
-      # --- الخطوة الجديدة והحاسمة: بناء الـ JS Bundle مسبقًا ---
+      # --- الأمر الصحيح لبناء الـ JS Bundle مسبقًا ---
       - name: Create JS Bundle and Assets
-        run: npx expo export --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res
-        
-      # لا نحتاج لكاش Gradle هنا لأن البناء سيكون سريعًا جدًا
+        run: npx expo export --platform android --dev false --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res
 
       - name: Decode Keystore
         run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > ./android/app/my-release-key.keystore
@@ -47,7 +45,6 @@ jobs:
 
       - name: Build Android Release APK
         working-directory: ./android
-        # زيادة ذاكرة Gradle لضمان عدم حدوث مشاكل
         run: ./gradlew assembleRelease -Porg.gradle.jvmargs="-Xmx4g -XX:MaxMetaspaceSize=2g"
         env:
           MYAPP_UPLOAD_STORE_FILE: my-release-key.keystore
