@@ -31,7 +31,8 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      # 5. يضيف إعداد hermesEnabled لملف الإعدادات
+      # 5. ((((  الخطوة الجديدة والأساسية لحل المشكلة  ))))
+      # يضيف إعداد hermesEnabled لملف الإعدادات
       - name: Add hermesEnabled flag to gradle.properties
         run: echo "hermesEnabled=true" >> android/gradle.properties
 
@@ -44,7 +45,7 @@ jobs:
         working-directory: ./android
         run: chmod +x ./gradlew
 
-      # 8. يبدأ عملية البناء (مع زيادة الذاكرة المخصصة)
+      # 8. يبدأ عملية البناء
       - name: Build Android Release APK
         working-directory: ./android
         run: ./gradlew assembleRelease
@@ -53,7 +54,6 @@ jobs:
           MYAPP_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           MYAPP_UPLOAD_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           MYAPP_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-          NODE_OPTIONS: "--max-old-space-size=4096"
 
       # 9. يرفع الـ APK
       - name: Upload APK

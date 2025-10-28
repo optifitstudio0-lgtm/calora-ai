@@ -109,9 +109,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'com.caloraai.app'
+    namespace 'com.anonymous.snackefd36423a4b84ac4bf123eca6f4ecfcb'
     defaultConfig {
-        applicationId 'com.caloraai.app'
+        applicationId 'com.anonymous.snackefd36423a4b84ac4bf123eca6f4ecfcb'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
