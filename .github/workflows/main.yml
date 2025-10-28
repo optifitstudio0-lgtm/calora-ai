@@ -10,7 +10,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      # 1. يسحب الكود
+      # 1. يسحب الكود (ومعه مجلد android الجاهز والمربوط مسبقًا)
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -27,38 +27,32 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      # 4. يثبت المكتبات
+      # 4. يثبت المكتبات (ضروري لـ Gradle)
       - name: Install dependencies
         run: npm install
 
-      # 5. يضيف إعداد hermesEnabled لملف الإعدادات
-      - name: Add hermesEnabled flag to gradle.properties
-        run: echo "hermesEnabled=true" >> android/gradle.properties
-
-      # 6. يرجع ملف التوقيع
+      # 5. يرجع ملف التوقيع
       - name: Decode Keystore
-        run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > ./android/my-release-key.keystore
+        run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > ./android/app/my-release-key.keystore
 
-      # 7. يعطي صلاحية التنفيذ
+      # 6. يعطي صلاحية التنفيذ
       - name: Make gradlew executable
         working-directory: ./android
         run: chmod +x ./gradlew
 
-      # 8. يبدأ عملية البناء مع زيادة الذاكرة
+      # 7. يبدأ عملية البناء مباشرة (بدون الحاجة لـ autolinking)
       - name: Build Android Release APK
         working-directory: ./android
         run: ./gradlew assembleRelease
         env:
+          # نترك CI: true كأفضل ممارسة
           CI: true
-          # ((((  هذا هو الحل النهائي والحقيقي للمشكلة  ))))
-          # زيادة الذاكرة المتاحة لعمليات Node.js إلى 4GB
-          NODE_OPTIONS: '--max-old-space-size=4096'
           MYAPP_UPLOAD_STORE_FILE: my-release-key.keystore
           MYAPP_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           MYAPP_UPLOAD_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           MYAPP_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
 
-      # 9. يرفع الـ APK
+      # 8. يرفع الـ APK
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
