@@ -10,9 +10,12 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      # 1. يسحب الكود (ومعه فولدر android الجاهز)
+      # 1. يسحب الكود مع ضمان التنظيف الكامل
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          clean: true
+          fetch-depth: 0
 
       # 2. يجهز Node.js
       - name: Set up Node.js
@@ -31,8 +34,7 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      # 5. ((((  الخطوة الجديدة والأساسية لحل المشكلة  ))))
-      # يضيف إعداد hermesEnabled لملف الإعدادات
+      # 5. يضيف إعداد hermesEnabled لملف الإعدادات
       - name: Add hermesEnabled flag to gradle.properties
         run: echo "hermesEnabled=true" >> android/gradle.properties
 
