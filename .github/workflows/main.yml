@@ -10,7 +10,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      # 1. يسحب الكود (ومعه فولدر android الجاهز)
+      # 1. يسحب الكود
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -31,8 +31,7 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      # 5. ((((  الخطوة الجديدة والأساسية لحل المشكلة  ))))
-      # يضيف إعداد hermesEnabled لملف الإعدادات
+      # 5. يضيف إعداد hermesEnabled لملف الإعدادات
       - name: Add hermesEnabled flag to gradle.properties
         run: echo "hermesEnabled=true" >> android/gradle.properties
 
@@ -45,10 +44,25 @@ jobs:
         working-directory: ./android
         run: chmod +x ./gradlew
 
-      # 8. يبدأ عملية البناء
-      - name: Build Android Release APK
+      # 8. ((((  هنا التعديل الأهم لكشف الخطأ  ))))
+      # يبدأ عملية البناء مع تشخيص إضافي
+      - name: Build Android Release APK with Debug Output
         working-directory: ./android
-        run: ./gradlew assembleRelease
+        run: |
+          # The original autolinking script hides its output.
+          # We will modify the Gradle script to capture and print the output for debugging.
+          echo ">>> Modifying Gradle script to capture Node.js output..."
+          SCRIPT_PATH="../node_modules/expo-modules-autolinking/scripts/android/autolinking_implementation.gradle"
+          
+          # Find the line that executes the node process and make it capture all output
+          sed -i "s/new ByteArrayOutputStream()/standardOutput = new ByteArrayOutputStream(); execSpec.setErrorOutput(standardOutput); execSpec.setStandardOutput(standardOutput)/" $SCRIPT_PATH
+          
+          # Find the line that checks the exit value, and add a line to print the captured output right before it
+          sed -i "/result.assertNormalExitValue()/a println '--- Autolinking Script Output START ---\n' + standardOutput.toString().trim() + '\n--- Autolinking Script Output END ---'" $SCRIPT_PATH
+          
+          echo ">>> Gradle script modified. Starting the build..."
+          # Run the build with stacktrace to get maximum details
+          ./gradlew assembleRelease --stacktrace
         env:
           MYAPP_UPLOAD_STORE_FILE: my-release-key.keystore
           MYAPP_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
