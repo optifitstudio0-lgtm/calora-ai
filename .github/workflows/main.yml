@@ -44,13 +44,15 @@ jobs:
         working-directory: ./android
         run: chmod +x ./gradlew
 
-      # 8. يبدأ عملية البناء
+      # 8. يبدأ عملية البناء مع زيادة الذاكرة
       - name: Build Android Release APK
         working-directory: ./android
         run: ./gradlew assembleRelease
         env:
-          # ((((  هذا هو الحل الأهم  ))))
           CI: true
+          # ((((  هذا هو الحل النهائي والحقيقي للمشكلة  ))))
+          # زيادة الذاكرة المتاحة لعمليات Node.js إلى 4GB
+          NODE_OPTIONS: '--max-old-space-size=4096'
           MYAPP_UPLOAD_STORE_FILE: my-release-key.keystore
           MYAPP_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           MYAPP_UPLOAD_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
