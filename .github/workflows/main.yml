@@ -30,9 +30,9 @@ jobs:
       - name: Check and fix package versions
         run: npx expo install --fix
       
-      # هذا هو الأمر الصحيح الذي يقوم بعملية التجميع ويضع المخرجات في مجلد اسمه dist
+      # --- هذا هو الأمر الصحيح والمصحح ---
       - name: Create JS Bundle and Assets
-        run: npx expo export --platform android --dev false --output-dir dist
+        run: npx expo export --platform android --output-dir dist
       
       # رفع المجلد الذي يحتوي على الـ Bundle والأصول الجاهزة
       - name: Upload Bundle Artifact
