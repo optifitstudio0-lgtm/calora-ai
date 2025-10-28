@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build Android APK Natively
 
 on:
   push:
@@ -10,53 +10,54 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: 1. Checkout repository
+      # 1. يسحب الكود (ومعه فولدر android الجاهز)
+      - name: Checkout repository
         uses: actions/checkout@v4
-        # نستخدم clean لضمان عدم وجود أي ملفات قديمة
-        with:
-          clean: true
 
-      - name: 2. Set up JDK 17
+      # 2. يجهز Node.js
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+
+      # 3. يجهز Java
+      - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: 3. Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20.x
-          # نضيف خاصية الكاش لتسريع تحميل المكتبات في المرات القادمة
-          cache: 'npm'
-
-      - name: 4. Install NPM dependencies
+      # 4. يثبت المكتبات
+      - name: Install dependencies
         run: npm install
 
-      - name: 5. Grant execute permission to gradlew
-        run: chmod +x android/gradlew
+      # 5. ((((  الخطوة الجديدة والأساسية لحل المشكلة  ))))
+      # يضيف إعداد hermesEnabled لملف الإعدادات
+      - name: Add hermesEnabled flag to gradle.properties
+        run: echo "hermesEnabled=true" >> android/gradle.properties
 
-      - name: 6. Clean Gradle project
-        # هذه خطوة مهمة لتنظيف أي كاش قديم خاص بـ Gradle
-        run: ./android/gradlew -p android clean
+      # 6. يرجع ملف التوقيع
+      - name: Decode Keystore
+        run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > ./android/my-release-key.keystore
 
-      - name: 7. Build Android APK
-        # سنبني التطبيق مباشرة من هنا
-        run: ./android/gradlew -p android assembleRelease
+      # 7. يعطي صلاحية التنفيذ
+      - name: Make gradlew executable
+        working-directory: ./android
+        run: chmod +x ./gradlew
+
+      # 8. يبدأ عملية البناء
+      - name: Build Android Release APK
+        working-directory: ./android
+        run: ./gradlew assembleRelease
         env:
           MYAPP_UPLOAD_STORE_FILE: my-release-key.keystore
           MYAPP_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           MYAPP_UPLOAD_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           MYAPP_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-          # نضيف هذا السطر الخاص بملف التوقيع
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
 
-      - name: 8. Decode Keystore before upload (optional, for verification)
-        # هذه الخطوة فقط للتأكد من أن الملف موجود قبل رفعه
-        run: echo $ANDROID_KEYSTORE_BASE64 | base64 --decode > android/my-release-key.keystore
-
-      - name: 9. Upload APK
+      # 9. يرفع الـ APK
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: calora-apk
           path: android/app/build/outputs/apk/release/app-release.apk
- 
