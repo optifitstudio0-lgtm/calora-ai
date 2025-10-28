@@ -44,21 +44,22 @@ jobs:
         working-directory: ./android
         run: chmod +x ./gradlew
 
-      # 8. ((((  هنا التعديل الأهم لكشف الخطأ  ))))
-      # يبدأ عملية البناء مع تشخيص إضافي
-      - name: Build Android Release APK with Debug Output
+      # 8. ((((  هنا التعديل النهائي لكشف الخطأ  ))))
+      # يبدأ عملية البناء مع تشخيص إضافي ومحسّن
+      - name: Build Android Release APK with Improved Debug Output
         working-directory: ./android
         run: |
           # The original autolinking script hides its output.
-          # We will modify the Gradle script to capture and print the output for debugging.
-          echo ">>> Modifying Gradle script to capture Node.js output..."
+          # We will modify the Gradle script again to print the output BEFORE the script crashes.
+          echo ">>> Modifying Gradle script to capture Node.js output (Attempt 2)..."
           SCRIPT_PATH="../node_modules/expo-modules-autolinking/scripts/android/autolinking_implementation.gradle"
           
-          # Find the line that executes the node process and make it capture all output
+          # Capture all output (stdout and stderr)
           sed -i "s/new ByteArrayOutputStream()/standardOutput = new ByteArrayOutputStream(); execSpec.setErrorOutput(standardOutput); execSpec.setStandardOutput(standardOutput)/" $SCRIPT_PATH
           
-          # Find the line that checks the exit value, and add a line to print the captured output right before it
-          sed -i "/result.assertNormalExitValue()/a println '--- Autolinking Script Output START ---\n' + standardOutput.toString().trim() + '\n--- Autolinking Script Output END ---'" $SCRIPT_PATH
+          # ** The key change is here: We INSERT the print statement BEFORE the failing line **
+          # The 'i' command in sed means 'insert before'
+          sed -i "/result.assertNormalExitValue()/i println '--- Autolinking Script Output START ---\n' + standardOutput.toString().trim() + '\n--- Autolinking Script Output END ---'" $SCRIPT_PATH
           
           echo ">>> Gradle script modified. Starting the build..."
           # Run the build with stacktrace to get maximum details
