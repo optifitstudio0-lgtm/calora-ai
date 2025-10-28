@@ -25,16 +25,15 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Install dependencies
-        run: npm install
-
-      # --- الخطوة الجديدة והأهم لحل المشكلة ---
+      # --- الخطوات الجديدة الحاسمة لإعادة بناء التبعيات ---
+      - name: Clean install dependencies
+        run: |
+          rm -rf node_modules package-lock.json
+          npm install --legacy-peer-deps
+      
+      # الآن بعد التثبيت النظيف، أمر الفحص سيعمل
       - name: Check and fix package versions
         run: npx expo install --fix
-
-      # (اختياري لكن موصى به) إعادة تشغيل npm install للتأكد من تطبيق التغييرات
-      - name: Re-install fixed dependencies
-        run: npm install
 
       - name: Cache Gradle packages
         uses: actions/cache@v4
@@ -52,10 +51,9 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x ./android/gradlew
 
-      # --- تعديل أمر البناء ليشمل التشخيص الدقيق ---
       - name: Build Android Release APK
         working-directory: ./android
-        run: ./gradlew assembleRelease --stacktrace # <-- تمت إضافة --stacktrace
+        run: ./gradlew assembleRelease --stacktrace
         env:
           MYAPP_UPLOAD_STORE_FILE: my-release-key.keystore
           MYAPP_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
@@ -66,4 +64,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: calora-apk
-          path: android/app/build/outputs/apk/release/app-release.apk 
+          path: android/app/build/outputs/apk/release/app-release.apk
