@@ -10,10 +10,9 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      # 1. يسحب الكود
+      # 1. يسحب الكود (مع خاصية التنظيف لضمان عدم وجود كاش قديم)
       - name: Checkout repository
         uses: actions/checkout@v4
-        # ملاحظة: سنبقي على clean و fetch-depth لضمان عدم وجود كاش قديم
         with:
           clean: true
           fetch-depth: 0
@@ -31,33 +30,26 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      # 4. يثبت المكتبات (في المسار الصحيح تلقائيًا)
+      # 4. يثبت المكتبات (سينفذ الأمر في جذر المشروع مباشرة)
       - name: Install dependencies
-        # ✅ (( تم حذف working-directory من هنا ))
-        run: |
-          cd calora-ai
-          npm install
+        run: npm install
 
-      # 5. يضيف إعداد hermesEnabled
+      # 5. يضيف إعداد hermesEnabled (سيضيفه للمسار الصحيح android/gradle.properties)
       - name: Add hermesEnabled flag to gradle.properties
-        # ✅ (( تم حذف working-directory من هنا ))
-        run: echo "hermesEnabled=true" >> calora-ai/android/gradle.properties
+        run: echo "hermesEnabled=true" >> android/gradle.properties
 
-      # 6. يرجع ملف التوقيع
+      # 6. يرجع ملف التوقيع (سيضعه في المسار الصحيح android/my-release-key.keystore)
       - name: Decode Keystore
-        # ✅ (( تم حذف working-directory من هنا ))
-        run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > ./calora-ai/android/my-release-key.keystore
+        run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > ./android/my-release-key.keystore
 
-      # 7. يعطي صلاحية التنفيذ
+      # 7. يعطي صلاحية التنفيذ لملف gradlew الموجود داخل مجلد android
       - name: Make gradlew executable
-        # ✅ (( هذا هو المسار الصحيح ))
-        working-directory: ./calora-ai/android
+        working-directory: ./android
         run: chmod +x ./gradlew
 
-      # 8. يبدأ عملية البناء
+      # 8. يبدأ عملية البناء من داخل مجلد android
       - name: Build Android Release APK
-        # ✅ (( وهذا هو المسار الصحيح ))
-        working-directory: ./calora-ai/android
+        working-directory: ./android
         run: ./gradlew assembleRelease
         env:
           MYAPP_UPLOAD_STORE_FILE: my-release-key.keystore
@@ -65,10 +57,9 @@ jobs:
           MYAPP_UPLOAD_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           MYAPP_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
 
-      # 9. يرفع الـ APK
+      # 9. يرفع الـ APK من المسار الصحيح
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: calora-apk
-          # ✅ وهذا هو المسار الصحيح للـ APK
-          path: calora-ai/android/app/build/outputs/apk/release/app-release.apk
+          path: android/app/build/outputs/apk/release/app-release.apk
