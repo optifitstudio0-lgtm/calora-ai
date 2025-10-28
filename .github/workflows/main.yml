@@ -44,34 +44,13 @@ jobs:
         working-directory: ./android
         run: chmod +x ./gradlew
 
-      # 8. ((((  التشخيص النهائي: تعديل سكربت Node.js مباشرة  ))))
-      - name: Build Android Release APK with Force Debug
+      # 8. يبدأ عملية البناء
+      - name: Build Android Release APK
         working-directory: ./android
-        run: |
-          # The Gradle hacks failed. We will now directly modify the Node.js script
-          # to wrap it in a try-catch block, forcing it to reveal any error.
-          echo ">>> Force-debugging the Expo autolinking Node.js script..."
-          NODE_SCRIPT_PATH="../node_modules/expo-modules-autolinking/scripts/resolve_modules.js"
-
-          # Check if the script exists before modifying
-          if [ -f "$NODE_SCRIPT_PATH" ]; then
-            # Prepend a 'try {' to a new temporary script
-            echo "try {" > temp_script.js
-            # Append the original script content to the temp file
-            cat "$NODE_SCRIPT_PATH" >> temp_script.js
-            # Append the universal catch block to the temp file
-            echo "} catch (error) { console.error('!!!!!! CRITICAL AUTOLINKING ERROR CATCH !!!!!!', error); process.exit(1); }" >> temp_script.js
-            
-            # Replace the original script with our new wrapped version
-            mv temp_script.js "$NODE_SCRIPT_PATH"
-            echo ">>> Node.js script has been wrapped successfully."
-          else
-            echo ">>> Node.js script not found at $NODE_SCRIPT_PATH. Skipping modification."
-          fi
-          
-          echo ">>> Starting the build..."
-          ./gradlew assembleRelease --stacktrace
+        run: ./gradlew assembleRelease
         env:
+          # ((((  هذا هو الحل الأهم  ))))
+          CI: true
           MYAPP_UPLOAD_STORE_FILE: my-release-key.keystore
           MYAPP_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           MYAPP_UPLOAD_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
