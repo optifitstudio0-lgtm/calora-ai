@@ -48,7 +48,7 @@ jobs:
       # 8. يبدأ عملية البناء
       - name: Build Android Release APK
         working-directory: ./android
-        run: ./gradlew assembleRelease --stacktrace
+        run: ./gradlew assembleRelease
         env:
           MYAPP_UPLOAD_STORE_FILE: my-release-key.keystore
           MYAPP_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
