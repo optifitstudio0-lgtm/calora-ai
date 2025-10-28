@@ -7,7 +7,10 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  # ===================================================================
+  #   الوظيفة الأولى: مهمتها فقط بناء الـ Bundle (الخطوة البطيئة)
+  # ===================================================================
+  bundle_job:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -19,12 +22,6 @@ jobs:
           node-version: '18.x'
           cache: 'npm'
 
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
       - name: Clean install dependencies
         run: |
           rm -rf node_modules package-lock.json
@@ -32,16 +29,49 @@ jobs:
       
       - name: Check and fix package versions
         run: npx expo install --fix
-
-      - name: Cache Gradle packages
-        uses: actions/cache@v4
+      
+      # هذا هو الأمر الصحيح الذي يقوم بعملية التجميع ويضع المخرجات في مجلد اسمه dist
+      - name: Create JS Bundle and Assets
+        run: npx expo export --platform android --dev false --output-dir dist
+      
+      # رفع المجلد الذي يحتوي على الـ Bundle والأصول الجاهزة
+      - name: Upload Bundle Artifact
+        uses: actions/upload-artifact@v4
         with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
+          name: bundle-artifact
+          path: dist
+
+  # ===================================================================
+  #   الوظيفة الثانية: مهمتها فقط بناء الـ APK (الخطوة السريعة)
+  # ===================================================================
+  build_apk_job:
+    # لن تبدأ إلا بعد نجاح الوظيفة الأولى
+    needs: bundle_job
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      # تنزيل الملفات الجاهزة من الوظيفة الأولى
+      - name: Download Bundle Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: bundle-artifact
+          path: dist
+      
+      # نسخ الملفات الجاهزة إلى الأماكن الصحيحة في مجلد android
+      - name: Copy bundle and assets to Android project
+        run: |
+          mkdir -p android/app/src/main/assets
+          mkdir -p android/app/src/main/res
+          cp dist/bundles/android-*.js android/app/src/main/assets/index.android.bundle
+          cp -r dist/assets/* android/app/src/main/res/
 
       - name: Decode Keystore
         run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > ./android/app/my-release-key.keystore
@@ -49,19 +79,11 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x ./android/gradlew
 
-      # --- هنا التعديل والحل النهائي ---
+      # الآن، Gradle سيجد الملفات جاهزة وسيتخطى خطوة التجميع
       - name: Build Android Release APK
         working-directory: ./android
-        # لقد حذفنا --stacktrace لأنه لم يعد ضروريًا الآن
         run: ./gradlew assembleRelease
         env:
-          # -- السطر الأهم لحل مشكلة توقف Metro Bundler --
-          NODE_OPTIONS: '--max-old-space-size=4096'
-          
-          # وهذا السطر لـ Gradle نفسه لضمان عدم حدوث مشاكل ذاكرة أخرى
-          GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx4g"
-          
-          # متغيرات التوقيع كما هي
           MYAPP_UPLOAD_STORE_FILE: my-release-key.keystore
           MYAPP_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           MYAPP_UPLOAD_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
