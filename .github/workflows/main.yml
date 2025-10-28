@@ -25,25 +25,19 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      # --- الخطوات الجديدة الحاسمة لإعادة بناء التبعيات ---
       - name: Clean install dependencies
         run: |
           rm -rf node_modules package-lock.json
           npm install --legacy-peer-deps
-      
-      # الآن بعد التثبيت النظيف، أمر الفحص سيعمل
+
       - name: Check and fix package versions
         run: npx expo install --fix
 
-      - name: Cache Gradle packages
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
+      # --- الخطوة الجديدة והحاسمة: بناء الـ JS Bundle مسبقًا ---
+      - name: Create JS Bundle and Assets
+        run: npx expo export --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res
+        
+      # لا نحتاج لكاش Gradle هنا لأن البناء سيكون سريعًا جدًا
 
       - name: Decode Keystore
         run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > ./android/app/my-release-key.keystore
@@ -53,7 +47,8 @@ jobs:
 
       - name: Build Android Release APK
         working-directory: ./android
-        run: ./gradlew assembleRelease --stacktrace
+        # زيادة ذاكرة Gradle لضمان عدم حدوث مشاكل
+        run: ./gradlew assembleRelease -Porg.gradle.jvmargs="-Xmx4g -XX:MaxMetaspaceSize=2g"
         env:
           MYAPP_UPLOAD_STORE_FILE: my-release-key.keystore
           MYAPP_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
