@@ -13,25 +13,29 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 1. إعداد بيئة Node.js (استخدام إصدار 18 LTS الأكثر استقراراً)
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '18.x'
-          cache: 'npm' # إضافة كاش لـ npm لتسريع التثبيت
+          cache: 'npm'
 
-      # 2. إعداد بيئة Java
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      # 3. تثبيت المكتبات من الكاش إن وجد
       - name: Install dependencies
         run: npm install
 
-      # 4. إضافة كاش لـ Gradle لتسريع عمليات البناء المستقبلية
+      # --- الخطوة الجديدة והأهم لحل المشكلة ---
+      - name: Check and fix package versions
+        run: npx expo install --fix
+
+      # (اختياري لكن موصى به) إعادة تشغيل npm install للتأكد من تطبيق التغييرات
+      - name: Re-install fixed dependencies
+        run: npm install
+
       - name: Cache Gradle packages
         uses: actions/cache@v4
         with:
@@ -42,26 +46,22 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
-      # 5. فك تشفير وتجهيز ملف التوقيع
       - name: Decode Keystore
         run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > ./android/app/my-release-key.keystore
 
-      # 6. إعطاء صلاحية التنفيذ لملف Gradle
       - name: Make gradlew executable
         run: chmod +x ./android/gradlew
 
-      # 7. بناء التطبيق
+      # --- تعديل أمر البناء ليشمل التشخيص الدقيق ---
       - name: Build Android Release APK
         working-directory: ./android
-        run: ./gradlew assembleRelease
+        run: ./gradlew assembleRelease --stacktrace # <-- تمت إضافة --stacktrace
         env:
-          # متغيرات البيئة الخاصة بالتوقيع، سيقرأها Gradle
           MYAPP_UPLOAD_STORE_FILE: my-release-key.keystore
           MYAPP_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           MYAPP_UPLOAD_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           MYAPP_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
 
-      # 8. رفع الـ APK كـ artifact
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
