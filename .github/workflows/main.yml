@@ -1,4 +1,4 @@
-name: Build Android APK Natively
+name: Build Android APK
 
 on:
   push:
@@ -10,49 +10,58 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      # 1. يسحب الكود (ومعه مجلد android الجاهز والمربوط مسبقًا)
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. يجهز Node.js
+      # 1. إعداد بيئة Node.js (استخدام إصدار 18 LTS الأكثر استقراراً)
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20.x
+          node-version: '18.x'
+          cache: 'npm' # إضافة كاش لـ npm لتسريع التثبيت
 
-      # 3. يجهز Java
+      # 2. إعداد بيئة Java
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '17'
 
-      # 4. يثبت المكتبات (ضروري لـ Gradle)
+      # 3. تثبيت المكتبات من الكاش إن وجد
       - name: Install dependencies
         run: npm install
 
-      # 5. يرجع ملف التوقيع
+      # 4. إضافة كاش لـ Gradle لتسريع عمليات البناء المستقبلية
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      # 5. فك تشفير وتجهيز ملف التوقيع
       - name: Decode Keystore
         run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > ./android/app/my-release-key.keystore
 
-      # 6. يعطي صلاحية التنفيذ
+      # 6. إعطاء صلاحية التنفيذ لملف Gradle
       - name: Make gradlew executable
-        working-directory: ./android
-        run: chmod +x ./gradlew
+        run: chmod +x ./android/gradlew
 
-      # 7. يبدأ عملية البناء مباشرة (بدون الحاجة لـ autolinking)
+      # 7. بناء التطبيق
       - name: Build Android Release APK
         working-directory: ./android
         run: ./gradlew assembleRelease
         env:
-          # نترك CI: true كأفضل ممارسة
-          CI: true
+          # متغيرات البيئة الخاصة بالتوقيع، سيقرأها Gradle
           MYAPP_UPLOAD_STORE_FILE: my-release-key.keystore
           MYAPP_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           MYAPP_UPLOAD_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           MYAPP_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
 
-      # 8. يرفع الـ APK
+      # 8. رفع الـ APK كـ artifact
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
