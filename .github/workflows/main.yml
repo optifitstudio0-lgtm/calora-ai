@@ -33,22 +33,35 @@ jobs:
       - name: Check and fix package versions
         run: npx expo install --fix
 
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
       - name: Decode Keystore
         run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > ./android/app/my-release-key.keystore
 
       - name: Make gradlew executable
         run: chmod +x ./android/gradlew
 
-      # --- الحل النهائي: زيادة ذاكرة Node.js و Gradle ---
+      # --- هنا التعديل والحل النهائي ---
       - name: Build Android Release APK
         working-directory: ./android
+        # لقد حذفنا --stacktrace لأنه لم يعد ضروريًا الآن
         run: ./gradlew assembleRelease
         env:
           # -- السطر الأهم لحل مشكلة توقف Metro Bundler --
           NODE_OPTIONS: '--max-old-space-size=4096'
-          # زيادة ذاكرة Gradle كإجراء احترازي
+          
+          # وهذا السطر لـ Gradle نفسه لضمان عدم حدوث مشاكل ذاكرة أخرى
           GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx4g"
-          # متغيرات التوقيع
+          
+          # متغيرات التوقيع كما هي
           MYAPP_UPLOAD_STORE_FILE: my-release-key.keystore
           MYAPP_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           MYAPP_UPLOAD_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
