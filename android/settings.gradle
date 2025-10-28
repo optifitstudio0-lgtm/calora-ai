@@ -9,7 +9,7 @@ pluginManagement {
     includeBuild("react-settings-plugin")
   }
 }
-
+ 
 plugins { id("com.facebook.react.settings") }
 
 def getRNMinorVersion() {
