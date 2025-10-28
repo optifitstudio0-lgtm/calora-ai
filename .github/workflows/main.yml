@@ -29,13 +29,9 @@ jobs:
         run: |
           rm -rf node_modules package-lock.json
           npm install --legacy-peer-deps
-
+      
       - name: Check and fix package versions
         run: npx expo install --fix
-
-      # --- الأمر الصحيح لبناء الـ JS Bundle مسبقًا ---
-      - name: Create JS Bundle and Assets
-        run: npx expo export --platform android --dev false --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res
 
       - name: Decode Keystore
         run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > ./android/app/my-release-key.keystore
@@ -43,10 +39,16 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x ./android/gradlew
 
+      # --- الحل النهائي: زيادة ذاكرة Node.js و Gradle ---
       - name: Build Android Release APK
         working-directory: ./android
-        run: ./gradlew assembleRelease -Porg.gradle.jvmargs="-Xmx4g -XX:MaxMetaspaceSize=2g"
+        run: ./gradlew assembleRelease
         env:
+          # -- السطر الأهم لحل مشكلة توقف Metro Bundler --
+          NODE_OPTIONS: '--max-old-space-size=4096'
+          # زيادة ذاكرة Gradle كإجراء احترازي
+          GRADLE_OPTS: -Dorg.gradle.jvmargs="-Xmx4g"
+          # متغيرات التوقيع
           MYAPP_UPLOAD_STORE_FILE: my-release-key.keystore
           MYAPP_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           MYAPP_UPLOAD_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
