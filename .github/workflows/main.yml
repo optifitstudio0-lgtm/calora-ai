@@ -44,25 +44,32 @@ jobs:
         working-directory: ./android
         run: chmod +x ./gradlew
 
-      # 8. ((((  هنا التعديل النهائي لكشف الخطأ  ))))
-      # يبدأ عملية البناء مع تشخيص إضافي ومحسّن
-      - name: Build Android Release APK with Improved Debug Output
+      # 8. ((((  التشخيص النهائي: تعديل سكربت Node.js مباشرة  ))))
+      - name: Build Android Release APK with Force Debug
         working-directory: ./android
         run: |
-          # The original autolinking script hides its output.
-          # We will modify the Gradle script again to print the output BEFORE the script crashes.
-          echo ">>> Modifying Gradle script to capture Node.js output (Attempt 2)..."
-          SCRIPT_PATH="../node_modules/expo-modules-autolinking/scripts/android/autolinking_implementation.gradle"
+          # The Gradle hacks failed. We will now directly modify the Node.js script
+          # to wrap it in a try-catch block, forcing it to reveal any error.
+          echo ">>> Force-debugging the Expo autolinking Node.js script..."
+          NODE_SCRIPT_PATH="../node_modules/expo-modules-autolinking/scripts/resolve_modules.js"
+
+          # Check if the script exists before modifying
+          if [ -f "$NODE_SCRIPT_PATH" ]; then
+            # Prepend a 'try {' to a new temporary script
+            echo "try {" > temp_script.js
+            # Append the original script content to the temp file
+            cat "$NODE_SCRIPT_PATH" >> temp_script.js
+            # Append the universal catch block to the temp file
+            echo "} catch (error) { console.error('!!!!!! CRITICAL AUTOLINKING ERROR CATCH !!!!!!', error); process.exit(1); }" >> temp_script.js
+            
+            # Replace the original script with our new wrapped version
+            mv temp_script.js "$NODE_SCRIPT_PATH"
+            echo ">>> Node.js script has been wrapped successfully."
+          else
+            echo ">>> Node.js script not found at $NODE_SCRIPT_PATH. Skipping modification."
+          fi
           
-          # Capture all output (stdout and stderr)
-          sed -i "s/new ByteArrayOutputStream()/standardOutput = new ByteArrayOutputStream(); execSpec.setErrorOutput(standardOutput); execSpec.setStandardOutput(standardOutput)/" $SCRIPT_PATH
-          
-          # ** The key change is here: We INSERT the print statement BEFORE the failing line **
-          # The 'i' command in sed means 'insert before'
-          sed -i "/result.assertNormalExitValue()/i println '--- Autolinking Script Output START ---\n' + standardOutput.toString().trim() + '\n--- Autolinking Script Output END ---'" $SCRIPT_PATH
-          
-          echo ">>> Gradle script modified. Starting the build..."
-          # Run the build with stacktrace to get maximum details
+          echo ">>> Starting the build..."
           ./gradlew assembleRelease --stacktrace
         env:
           MYAPP_UPLOAD_STORE_FILE: my-release-key.keystore
