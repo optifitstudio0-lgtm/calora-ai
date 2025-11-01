@@ -19,24 +19,15 @@ jobs:
     - name: Install dependencies
       run: npm ci
 
-    - name: Prebuild for Android
-      run: npx expo prebuild --platform android
-      env:
-        CI: 1
+    # 1. هنبني الباندل بنفسنا لأننا لغينا prebuild
+    - name: Build JS Bundle
+      run: npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res
 
-    # --- الخطوة الجديدة السحرية (الحل الجراحي) ---
-    - name: Force Inject kotlinVersion into build.gradle
-      run: |
-        echo "Patching build.gradle to insert kotlinVersion..."
-        sed -i.bak '/targetSdkVersion =/a \        kotlinVersion = "1.9.23"' android/build.gradle
-        echo "File patched successfully. Verifying content:"
-        cat android/build.gradle
-    # ----------------------------------------------
-
+    # 2. هنبني الـ APK مباشرة من المجلد اللي رفعناه
     - name: Build Android APK
       run: |
         cd android
-        ./gradlew assembleRelease
+        ./gradlew assembleRelease -x bundleReleaseJsAndAssets
     
     - name: Upload APK
       uses: actions/upload-artifact@v4
