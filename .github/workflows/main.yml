@@ -16,15 +16,22 @@ jobs:
       with:
         node-version: '18'
 
-    # التعديل هنا اهو
     - name: Install dependencies
       run: npm ci
 
-    # هنصلح برضو الحتة بتاعت --non-interactive
     - name: Prebuild for Android
       run: npx expo prebuild --platform android
       env:
-        CI: 1 # دي الطريقة الصح عشان تقول لـ Expo إنك في بيئة CI/CD
+        CI: 1
+
+    # --- الخطوة الجديدة السحرية (الحل الجراحي) ---
+    - name: Force Inject kotlinVersion into build.gradle
+      run: |
+        echo "Patching build.gradle to insert kotlinVersion..."
+        sed -i.bak '/targetSdkVersion =/a \        kotlinVersion = "1.9.23"' android/build.gradle
+        echo "File patched successfully. Verifying content:"
+        cat android/build.gradle
+    # ----------------------------------------------
 
     - name: Build Android APK
       run: |
