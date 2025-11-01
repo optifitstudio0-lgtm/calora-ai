@@ -45,4 +45,3 @@ jobs:
       with:
         name: app-release.apk
         path: calora/android/app/build/outputs/apk/release/app-release.apk # <--- عدلنا المسار هنا
- 
