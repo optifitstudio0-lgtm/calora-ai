@@ -1,16 +1,14 @@
 name: Build Android APK
 
-# امتى يشتغل؟ (هنا لما تعمل push على فرع main)
 on:
   push:
     branches: [ "main" ]
 
-# الخطوات اللي هيمشي عليها
 jobs:
   build:
-    runs-on: ubuntu-latest # هيشتغل على جهاز وهمي بنظام لينكس
+    runs-on: ubuntu-latest
     steps:
-    # 1. بينزل الكود بتاعك على الجهاز الوهمي ده
+    # 1. بينزل الكود بتاعك
     - name: Checkout repository
       uses: actions/checkout@v3
 
@@ -20,26 +18,26 @@ jobs:
       with:
         node-version: '18'
 
-    # 3. بينزل المكتبات اللي مشروعك محتاجها (react-native, etc.)
+    # 3. بينزل المكتبات اللي مشروعك محتاجها
     - name: Install dependencies
-      run: npm install # أو yarn install
+      run: npm install # أو لو بتستخدم yarn خليها yarn install
 
-    # 4. دي الخطوة الجديدة والمهمة جداً (تجهيز الحشو)
-    # هنا إحنا بنبني كود الجافاسكريبت بنفسنا وبنحطه في مكانه الصح
+    # 4. الخطوة الجديدة والمهمة جداً (تجهيز الباندل)
+    # دي اللي هتمنع التعليق بتاع الـ 6 ساعات
     - name: Create JS bundle
       run: npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res
 
-    # 5. دي الخطوة الأخيرة (قفل الساندوتش)
-    # هنا بنقوله اعمل الـ APK، بس ضفناله حتة مهمة جداً
-    # -x bundleReleaseJsAndAssets معناها "متعملش أنت الحشو، أنا جهزتهولك خلاص"
+    # 5. بناء الـ APK نفسه (الخطوة السريعة)
+    # لاحظ إننا ضفنا -x bundleReleaseJsAndAssets في آخر الأمر
     - name: Build Android APK
       run: |
         cd android
         ./gradlew assembleRelease -x bundleReleaseJsAndAssets
 
-    # دي خطوة إضافية لو عايز ترفع الـ APK اللي اتعمل
+    # 6. رفع الـ APK عشان تقدر تحمله
+    # هنا صلحنا المشكلة وخليناها v4 بدل v3
     - name: Upload APK
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4 # <--- تم التعديل هنا
       with:
         name: app-release.apk
         path: android/app/build/outputs/apk/release/app-release.apk
