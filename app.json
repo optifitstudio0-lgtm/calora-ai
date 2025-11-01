@@ -1,12 +1,12 @@
 {
   "expo": {
     "name": "Calora AI",
-    "slug": "calora-ai", 
+    "slug": "calora-ai",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "scheme": "calora", 
+    "scheme": "calora",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash.png",
@@ -15,7 +15,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.youssef.caloraai" 
+      "bundleIdentifier": "com.youssef.caloraai"
     },
     "android": {
       "adaptiveIcon": {
@@ -29,7 +29,15 @@
       "favicon": "./assets/icon.png"
     },
     "plugins": [
-      "expo-font"
+      "expo-font",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "kotlinVersion": "1.9.23"
+          }
+        }
+      ]
     ],
     "extra": {
       "eas": {
