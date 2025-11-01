@@ -16,22 +16,21 @@ jobs:
       with:
         node-version: '18'
 
+    # التعديل هنا اهو
     - name: Install dependencies
-      run: npm install
+      run: npm ci
 
-    # 1. الخطوة الجديدة والمهمة جداً لمشاريع Expo
-    # دي اللي بتحول المشروع لملفات أندرويد عادية
+    # هنصلح برضو الحتة بتاعت --non-interactive
     - name: Prebuild for Android
-      run: npx expo prebuild --platform android --non-interactive
+      run: npx expo prebuild --platform android
+      env:
+        CI: 1 # دي الطريقة الصح عشان تقول لـ Expo إنك في بيئة CI/CD
 
-    # 2. بناء الـ APK بالطريقة العادية بعد ما عملنا Prebuild
-    # هنا مش محتاجين نعمل bundle بنفسنا لأن prebuild بتظبط كل حاجة
     - name: Build Android APK
       run: |
         cd android
         ./gradlew assembleRelease
     
-    # 3. رفع الـ APK عشان تقدر تحمله
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
