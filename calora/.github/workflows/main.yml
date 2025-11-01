@@ -1,0 +1,47 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    # خطوة جديدة للتأكد من هيكل الملفات
+    - name: List files to confirm structure
+      run: ls -R
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+
+    # --- التعديل الجذري هنا ---
+    # 1. دخلنا إلى المجلد الصحيح
+    # 2. استخدمنا npm install الأكثر تسامحاً
+    - name: Install dependencies
+      working-directory: ./calora  # <--- هذا هو السطر الحاسم
+      run: npm install
+
+    # 2. بناء الباندل من داخل المجلد الصحيح
+    - name: Build JS Bundle
+      working-directory: ./calora  # <--- وهذا أيضاً
+      run: npx react-native bundle --platform android --dev false --entry-file node_modules/expo/AppEntry.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res
+
+    # 3. بناء الـ APK من داخل المجلد الصحيح
+    - name: Build Android APK
+      working-directory: ./calora  # <--- وهذا أيضاً
+      run: |
+        cd android
+        ./gradlew assembleRelease -x bundleReleaseJsAndAssets
+    
+    # 4. رفع الـ APK من المسار الصحيح
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-release.apk
+        path: calora/android/app/build/outputs/apk/release/app-release.apk # <--- عدلنا المسار هنا
