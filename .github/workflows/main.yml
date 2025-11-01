@@ -1,96 +1,45 @@
 name: Build Android APK
 
+# امتى يشتغل؟ (هنا لما تعمل push على فرع main)
 on:
   push:
-    branches:
-      - main
-  workflow_dispatch:
+    branches: [ "main" ]
 
+# الخطوات اللي هيمشي عليها
 jobs:
-  # ===================================================================
-  #   الوظيفة الأولى: مهمتها فقط بناء الـ Bundle (الخطوة البطيئة)
-  # ===================================================================
-  bundle_job:
-    runs-on: ubuntu-latest
+  build:
+    runs-on: ubuntu-latest # هيشتغل على جهاز وهمي بنظام لينكس
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+    # 1. بينزل الكود بتاعك على الجهاز الوهمي ده
+    - name: Checkout repository
+      uses: actions/checkout@v3
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4 
-        with:
-          node-version: '18.x'
-          cache: 'npm'
+    # 2. بيجهز بيئة الجافاسكريبت (Node.js)
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
 
-      - name: Clean install dependencies
-        run: |
-          rm -rf node_modules package-lock.json
-          npm install --legacy-peer-deps
-      
-      - name: Check and fix package versions
-        run: npx expo install --fix
-      
-      # --- هذا هو الأمر الصحيح والمصحح ---
-      - name: Create JS Bundle and Assets
-        run: npx expo export --platform android --output-dir dist
-      
-      # رفع المجلد الذي يحتوي على الـ Bundle والأصول الجاهزة
-      - name: Upload Bundle Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: bundle-artifact
-          path: dist
+    # 3. بينزل المكتبات اللي مشروعك محتاجها (react-native, etc.)
+    - name: Install dependencies
+      run: npm install # أو yarn install
 
-  # ===================================================================
-  #   الوظيفة الثانية: مهمتها فقط بناء الـ APK (الخطوة السريعة)
-  # ===================================================================
-  build_apk_job:
-    # لن تبدأ إلا بعد نجاح الوظيفة الأولى
-    needs: bundle_job
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+    # 4. دي الخطوة الجديدة والمهمة جداً (تجهيز الحشو)
+    # هنا إحنا بنبني كود الجافاسكريبت بنفسنا وبنحطه في مكانه الصح
+    - name: Create JS bundle
+      run: npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res
 
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
+    # 5. دي الخطوة الأخيرة (قفل الساندوتش)
+    # هنا بنقوله اعمل الـ APK، بس ضفناله حتة مهمة جداً
+    # -x bundleReleaseJsAndAssets معناها "متعملش أنت الحشو، أنا جهزتهولك خلاص"
+    - name: Build Android APK
+      run: |
+        cd android
+        ./gradlew assembleRelease -x bundleReleaseJsAndAssets
 
-      # تنزيل الملفات الجاهزة من الوظيفة الأولى
-      - name: Download Bundle Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: bundle-artifact
-          path: dist
-      
-      # نسخ الملفات الجاهزة إلى الأماكن الصحيحة في مجلد android
-      - name: Copy bundle and assets to Android project
-        run: |
-          mkdir -p android/app/src/main/assets
-          mkdir -p android/app/src/main/res
-          cp dist/bundles/android-*.js android/app/src/main/assets/index.android.bundle
-          cp -r dist/assets/* android/app/src/main/res/
-
-      - name: Decode Keystore
-        run: echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > ./android/app/my-release-key.keystore
-
-      - name: Make gradlew executable
-        run: chmod +x ./android/gradlew
-
-      # الآن، Gradle سيجد الملفات جاهزة وسيتخطى خطوة التجميع
-      - name: Build Android Release APK
-        working-directory: ./android
-        run: ./gradlew assembleRelease
-        env:
-          MYAPP_UPLOAD_STORE_FILE: my-release-key.keystore
-          MYAPP_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          MYAPP_UPLOAD_STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          MYAPP_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: calora-apk
-          path: android/app/build/outputs/apk/release/app-release.apk
+    # دي خطوة إضافية لو عايز ترفع الـ APK اللي اتعمل
+    - name: Upload APK
+      uses: actions/upload-artifact@v3
+      with:
+        name: app-release.apk
+        path: android/app/build/outputs/apk/release/app-release.apk
