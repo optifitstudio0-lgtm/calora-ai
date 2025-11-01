@@ -8,36 +8,32 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    # 1. بينزل الكود بتاعك
     - name: Checkout repository
       uses: actions/checkout@v3
 
-    # 2. بيجهز بيئة الجافاسكريبت (Node.js)
     - name: Set up Node.js
       uses: actions/setup-node@v3
       with:
         node-version: '18'
 
-    # 3. بينزل المكتبات اللي مشروعك محتاجها
     - name: Install dependencies
-      run: npm install # أو لو بتستخدم yarn خليها yarn install
+      run: npm install
 
-    # 4. الخطوة الجديدة والمهمة جداً (تجهيز الباندل)
-    # دي اللي هتمنع التعليق بتاع الـ 6 ساعات
-    - name: Create JS bundle
-      run: npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res
+    # 1. الخطوة الجديدة والمهمة جداً لمشاريع Expo
+    # دي اللي بتحول المشروع لملفات أندرويد عادية
+    - name: Prebuild for Android
+      run: npx expo prebuild --platform android --non-interactive
 
-    # 5. بناء الـ APK نفسه (الخطوة السريعة)
-    # لاحظ إننا ضفنا -x bundleReleaseJsAndAssets في آخر الأمر
+    # 2. بناء الـ APK بالطريقة العادية بعد ما عملنا Prebuild
+    # هنا مش محتاجين نعمل bundle بنفسنا لأن prebuild بتظبط كل حاجة
     - name: Build Android APK
       run: |
         cd android
-        ./gradlew assembleRelease -x bundleReleaseJsAndAssets
-
-    # 6. رفع الـ APK عشان تقدر تحمله
-    # هنا صلحنا المشكلة وخليناها v4 بدل v3
+        ./gradlew assembleRelease
+    
+    # 3. رفع الـ APK عشان تقدر تحمله
     - name: Upload APK
-      uses: actions/upload-artifact@v4 # <--- تم التعديل هنا
+      uses: actions/upload-artifact@v4
       with:
         name: app-release.apk
         path: android/app/build/outputs/apk/release/app-release.apk
