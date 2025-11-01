@@ -19,11 +19,11 @@ jobs:
     - name: Install dependencies
       run: npm ci
 
-    # 1. هنبني الباندل بنفسنا لأننا لغينا prebuild
+    # --- التعديل هنا ---
+    # بنستخدم نقطة الدخول الصحيحة لمشاريع Expo
     - name: Build JS Bundle
-      run: npx react-native bundle --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res
+      run: npx react-native bundle --platform android --dev false --entry-file node_modules/expo/AppEntry.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res
 
-    # 2. هنبني الـ APK مباشرة من المجلد اللي رفعناه
     - name: Build Android APK
       run: |
         cd android
