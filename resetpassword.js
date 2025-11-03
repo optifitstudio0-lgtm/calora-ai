@@ -13,7 +13,7 @@ import Icon from 'react-native-vector-icons/Feather';
 import Svg, { Path, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { supabase } from '../supabaseclient'; // تأكد من المسار الصحيح
+import { supabase } from './supabaseclient'; // تأكد من المسار الصحيح
 
 const { width, height } = Dimensions.get('window');
 
