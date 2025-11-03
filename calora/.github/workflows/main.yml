@@ -7,41 +7,57 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    
+    # تحديد المجلد الرئيسي الافتراضي لكل الأوامر في هذا الـ job
+    # هذا يغنينا عن كتابة working-directory في كل خطوة
+    defaults:
+      run:
+        working-directory: ./calora
+
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
+    - name: 1. Checkout repository
+      uses: actions/checkout@v4 # يفضل استخدام أحدث إصدار
 
-    # خطوة جديدة للتأكد من هيكل الملفات
-    - name: List files to confirm structure
-      run: ls -R
+    # خطوة جديدة للكشف عن الملفات الكبيرة في المشروع
+    - name: 2. Find Large Files
+      run: |
+        echo "--- Searching for files larger than 500KB ---"
+        find . -type f -size +500k -exec ls -lh {} +
+      working-directory: . # نجعل هذه الخطوة تعمل من الجذر للبحث في كل المشروع
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v3
+    - name: 3. Set up Node.js
+      uses: actions/setup-node@v4 # يفضل استخدام أحدث إصدار
       with:
         node-version: '18'
 
-    # --- هذا هو التعديل الجذري والحاسم ---
-    # 1. دخلنا إلى المجلد الصحيح
-    # 2. استخدمنا npm install الأكثر تسامحاً
-    - name: Install dependencies
-      working-directory: ./calora  # <--- هذا هو السطر الحاسم
+    # خطوة الكاش لتسريع تحميل الاعتماديات
+    - name: 4. Cache Node Modules
+      id: cache-npm
+      uses: actions/cache@v4 # يفضل استخدام أحدث إصدار
+      with:
+        # مسار مجلد الكاش
+        path: ./calora/node_modules
+        # مفتاح فريد للكاش، يتغير فقط عند تعديل package-lock.json
+        key: ${{ runner.os }}-build-${{ hashFiles('**/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-build-
+
+    - name: 5. Install Dependencies
+      # هذا الشرط يعني: لا تنفذ هذه الخطوة إذا تم استعادة الكاش بنجاح
+      if: steps.cache-npm.outputs.cache-hit != 'true'
       run: npm install
 
-    # 2. بناء الباندل من داخل المجلد الصحيح
-    - name: Build JS Bundle
-      working-directory: ./calora  # <--- وهذا أيضاً
+    - name: 6. Build JS Bundle
       run: npx react-native bundle --platform android --dev false --entry-file node_modules/expo/AppEntry.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res
 
-    # 3. بناء الـ APK من داخل المجلد الصحيح
-    - name: Build Android APK
-      working-directory: ./calora  # <--- وهذا أيضاً
+    - name: 7. Build Android APK
       run: |
         cd android
         ./gradlew assembleRelease -x bundleReleaseJsAndAssets
     
-    # 4. رفع الـ APK من المسار الصحيح
-    - name: Upload APK
-      uses: actions/upload-artifact@v4
+    - name: 8. Upload APK Artifact
+      uses: actions/upload-artifact@v4 # يفضل استخدام أحدث إصدار
       with:
         name: app-release.apk
-        path: calora/android/app/build/outputs/apk/release/app-release.apk # <--- عدلنا المسار هنا
+        # المسار الصحيح للـ APK بالنسبة لجذر المستودع
+        path: calora/android/app/build/outputs/apk/release/app-release.apk
