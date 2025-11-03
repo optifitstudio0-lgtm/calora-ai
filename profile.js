@@ -14,11 +14,12 @@ const translations = {
 const lightTheme = { background: '#F5FBF5', surface: '#FFFFFF', primaryText: '#1C1C1E', secondaryText: '#8A8A8E', separator: '#E5E5EA', logout: '#FF3B30', statusBar: 'dark-content', borderColor: '#FFFFFF' };
 const darkTheme = { background: '#121212', surface: '#1E1E1E', primaryText: '#FFFFFF', secondaryText: '#A5A5A5', separator: '#38383A', logout: '#EF5350', statusBar: 'light-content', borderColor: '#1E1E1E' };
 
+// ✅✅✅ [الإصلاح الرئيسي هنا]: تم تعديل المكون والـ Style بتاعه ✅✅✅
 const SettingsItem = ({ icon, name, onPress, color, theme, isRTL }) => (
     <TouchableOpacity style={styles.settingsItem(theme)} onPress={onPress}>
-      <View style={[styles.settingsItemContent, { flexDirection: 'row' }]}>
-        {icon}
-        <Text style={[styles.settingsItemText(theme), { color: color || theme.primaryText, flex: 1, textAlign: isRTL ? 'right' : 'left', marginHorizontal: 15 }]}>{name}</Text>
+      <View style={[styles.settingsItemContent, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
+        <View style={styles.settingsItemIcon(isRTL)}>{icon}</View>
+        <Text style={[styles.settingsItemText(theme), { color: color || theme.primaryText }]}>{name}</Text>
       </View>
       <Icon name={isRTL ? "chevron-left" : "chevron-right"} size={22} color="#C7C7CC" />
     </TouchableOpacity>
@@ -65,20 +66,18 @@ const ProfileScreen = () => {
     setRefreshing(false);
   }, [loadScreenData]);
   
-  // ✅✅✅ --- هذا هو الجزء الذي تم تعديله --- ✅✅✅
   const handleLogout = async () => {
     try {
       const { error } = await supabase.auth.signOut();
       
       if (error) {
         Alert.alert('Logout Error', error.message);
-        return; // نتوقف هنا إذا حدث خطأ
+        return; 
       }
       
-      // إذا نجح تسجيل الخروج، نقوم بإعادة تعيين التنقل إلى شاشة البداية
       navigation.reset({
         index: 0,
-        routes: [{ name: 'Index' }], // تأكد أن 'Index' هو اسم المسار الصحيح لشاشتك الأولى
+        routes: [{ name: 'Index' }],
       });
 
     } catch (e) {
@@ -128,7 +127,7 @@ const ProfileScreen = () => {
   );
 };
 
-// --- الأنماط (تبقى كما هي) ---
+// --- الأنماط بعد التعديل ---
 const styles = {
   container: (theme) => ({ flex: 1, backgroundColor: theme.background }),
   header: { height: 200, overflow: 'hidden', borderBottomLeftRadius: 30, borderBottomRightRadius: 30, },
@@ -138,10 +137,35 @@ const styles = {
   profileName: (theme) => ({ fontSize: 22, fontWeight: 'bold', color: theme.primaryText, marginTop: 12 }),
   menuContainer: { paddingHorizontal: 20, marginTop: 40 },
   menuSection: (theme) => ({ backgroundColor: theme.surface, borderRadius: 12, marginBottom: 20, overflow: 'hidden' }),
-  settingsItem: (theme) => ({ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 15, paddingVertical: 15 }),
-  settingsItemContent: { alignItems: 'center', flex: 1 },
-  settingsItemText: (theme) => ({ fontSize: 17, color: theme.primaryText }),
-  separator: (theme) => ({ height: StyleSheet.hairlineWidth, backgroundColor: theme.separator, marginLeft: 54 }),
+  
+  // ✅✅✅ [الإصلاح الرئيسي هنا]: تم تعديل الـ Style الخاص بالعنصر ✅✅✅
+  settingsItem: (theme) => ({ 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between', 
+    paddingHorizontal: 15, 
+    paddingVertical: 15 
+  }),
+  settingsItemContent: { 
+    alignItems: 'center', 
+    flex: 1 
+  },
+  settingsItemIcon: (isRTL) => ({
+    // هنا بنحدد الهامش بناءً على اللغة
+    marginRight: isRTL ? 0 : 15,
+    marginLeft: isRTL ? 15 : 0,
+  }),
+  settingsItemText: (theme) => ({ 
+    fontSize: 17, 
+    color: theme.primaryText 
+  }),
+  separator: (theme) => ({ 
+    height: StyleSheet.hairlineWidth, 
+    backgroundColor: theme.separator, 
+    // بنخلي الفاصل يبدأ من بعد مكان الأيقونة
+    marginLeft: 54,
+    marginRight: 54 // نضيف دي احتياطي عشان لو الشاشة اتعكست
+  }),
 };
 
 export default ProfileScreen;
