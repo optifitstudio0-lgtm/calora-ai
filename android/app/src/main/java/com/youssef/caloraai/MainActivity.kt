@@ -1,5 +1,10 @@
 package com.youssef.caloraai
 
+// --- <<< تمت إضافة هذه السطور لحل المشكلة >>> ---
+import com.youssef.caloraai.BuildConfig
+import com.youssef.caloraai.R
+// --- <<< نهاية الإضافة >>> ---
+
 import android.os.Build
 import android.os.Bundle
 
