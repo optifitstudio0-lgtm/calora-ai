@@ -9,51 +9,39 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # 1. سحب الكود
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    # 2. إعداد Node.js
     - name: Set up Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '18'
 
-    # 3. تفعيل الكاش
-    - name: Cache Node Modules
-      id: cache-npm
+    - name: Install and Cache Dependencies
       uses: actions/cache@v4
+      id: cache-npm
       with:
         path: ./node_modules
         key: ${{ runner.os }}-build-${{ hashFiles('**/package-lock.json') }}
         restore-keys: |
           ${{ runner.os }}-build-
 
-    # 4. تثبيت الاعتماديات
     - name: Install Dependencies
       if: steps.cache-npm.outputs.cache-hit != 'true'
       run: npm install
 
-    # 5. تثبيت metro-config
-    - name: Install missing metro config
-      run: npm install @expo/metro-config --save-dev
-    
-    # --- <<< الخطوة الجديدة والمهمة هنا >>> ---
-    # 6. إنشاء مجلد assets لملف الـ bundle
     - name: Create assets directory for bundle
       run: mkdir -p android/app/src/main/assets
 
-    # 7. بناء حزمة الجافاسكريبت (JS Bundle)
     - name: Build JS Bundle
       run: npx react-native bundle --platform android --dev false --entry-file node_modules/expo/AppEntry.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res
-
-    # 8. بناء ملف الـ APK
-    - name: Build Android APK
+    
+    - name: Fix permissions and Build Android APK
       run: |
         cd android
-        ./gradlew assembleRelease -x bundleReleaseJsAndAssets
-    
-    # 9. رفع ملف الـ APK
+        chmod +x ./gradlew
+        ./gradlew assembleRelease
+
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
       with:
