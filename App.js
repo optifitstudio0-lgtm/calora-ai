@@ -1,16 +1,17 @@
-// App.js (النسخة النهائية والمحسنة)
+// App.js (النسخة النهائية الكاملة والمعدلة)
 
 import 'react-native-url-polyfill/auto';
 import 'react-native-get-random-values';
 import 'react-native-gesture-handler';
 
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, I18nManager } from 'react-native'; // <--- تم إضافة I18nManager
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { supabase } from './supabaseclient'; 
 import * as Linking from 'expo-linking'; 
+import AsyncStorage from '@react-native-async-storage/async-storage'; // <--- تم إضافة AsyncStorage
 
 // --- استيراد الشاشات ---
 import SplashScreen from './Splash';
@@ -33,6 +34,7 @@ const App = () => {
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isOnboardingComplete, setIsOnboardingComplete] = useState(false);
+  const [appLanguage, setAppLanguage] = useState('en'); // <--- 1. أضفنا حالة اللغة هنا
 
   // دالة التعامل مع الروابط العميقة (للمصادقة عبر OAuth)
   const handleDeepLink = (url) => {
@@ -54,18 +56,31 @@ const App = () => {
   };
 
   useEffect(() => {
-    // جلب الجلسة عند بدء تشغيل التطبيق
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      // ✅ التحقق من بيانات Supabase مباشرة
-      setIsOnboardingComplete(session?.user?.user_metadata?.onboarding_complete || false);
-      setTimeout(() => setLoading(false), 2000); 
-    });
+    const initializeApp = async () => {
+      // --- 2. أضفنا كود تحميل اللغة ---
+      try {
+        const savedLang = await AsyncStorage.getItem('appLanguage');
+        if (savedLang) {
+          setAppLanguage(savedLang);
+          I18nManager.forceRTL(savedLang === 'ar'); // تطبيق اتجاه اللغة فورًا
+        }
+      } catch (e) {
+        console.log('Failed to load language.');
+      }
+      
+      // جلب الجلسة عند بدء تشغيل التطبيق (كودك الأصلي)
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        setSession(session);
+        setIsOnboardingComplete(session?.user?.user_metadata?.onboarding_complete || false);
+        setTimeout(() => setLoading(false), 2000); 
+      });
+    };
+
+    initializeApp();
 
     // الاستماع لأي تغيير في حالة تسجيل الدخول/الخروج
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      // ✅ التحقق من بيانات Supabase مباشرة عند كل تغيير
       setIsOnboardingComplete(session?.user?.user_metadata?.onboarding_complete || false);
     });
     
@@ -83,7 +98,6 @@ const App = () => {
     return <SplashScreen />;
   }
 
-  // ✅ تحديد الشاشة الابتدائية بناءً على حالة المستخدم الموثوقة من Supabase
   const getInitialRouteName = () => {
     if (session && session.user) {
       return isOnboardingComplete ? 'MainUI' : 'BasicInfo';
@@ -115,7 +129,10 @@ const App = () => {
             <Stack.Screen name="Results" component={ResultsScreen} />
             
             {/* المستخدم مسجل وأكمل الإعداد */}
-            <Stack.Screen name="MainUI" component={MainUI} />
+            {/* --- 3. تعديل طريقة استدعاء MainUI لتمرير اللغة --- */}
+            <Stack.Screen name="MainUI">
+              {(props) => <MainUI {...props} appLanguage={appLanguage} />}
+            </Stack.Screen>
           </Stack.Navigator>
         </NavigationContainer>
       </View>

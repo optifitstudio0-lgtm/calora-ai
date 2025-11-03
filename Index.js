@@ -1,6 +1,6 @@
-// In IndexScreen.js (الكود الكامل والنهائي)
+// In IndexScreen.js (الكود الكامل والنهائي والمعدل)
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react'; // <--- الخطوة 1: تم التأكد من وجود useCallback هنا
 import {
   View, Text, StyleSheet, FlatList, Image, Dimensions,
   TouchableOpacity, StatusBar, SafeAreaView, Animated,
@@ -110,12 +110,13 @@ const IndexScreen = ({ navigation, route }) => {
     }).current;
     const viewabilityConfig = useRef({ viewAreaCoveragePercentThreshold: 50 }).current;
 
-    const handleNextPress = () => {
+    // ✅✅✅  الخطوة 2: هنا التعديل الأساسي لحل المشكلة ✅✅✅
+    const handleNextPress = useCallback(() => {
         const nextSlideIndex = currentIndex + 1;
         if (nextSlideIndex < slidesContent.length && slidesRef.current) {
             slidesRef.current.scrollToIndex({ index: nextSlideIndex });
         }
-    };
+    }, [currentIndex]); // بنقول للدالة إنها تعتمد على أحدث قيمة لـ currentIndex
     
     const slides = slidesContent.map(slide => ({
         ...slide,
@@ -194,7 +195,7 @@ const IndexScreen = ({ navigation, route }) => {
 };
 
 // ==========================================================
-// ===== الأنماط بعد التعديل الأخير =====
+// ===== الأنماط (بدون تغيير) =====
 // ==========================================================
 const styles = {
     container: (theme) => ({
@@ -224,14 +225,12 @@ const styles = {
         width: width * 0.75,
         height: height * 0.4,
     },
-    // ✅✅✅ هنا التعديل الوحيد: رجعنا دي عشان الزراير تنزل تحت خالص ✅✅✅
     bottomContainer: (theme, isRTL) => ({
         flex: 1,
         paddingHorizontal: 30,
         paddingTop: 30,
         paddingBottom: 15,
         backgroundColor: theme.background,
-        // 'space-between' بتلزق الكلام فوق والزرار تحت، وده اللي هينزل الزرار للمستوى المطلوب
         justifyContent: 'space-between', 
     }),
     title: (theme, isRTL) => ({
@@ -280,7 +279,7 @@ const styles = {
         width: '100%',
         justifyContent: 'space-between',
         gap: 15,
-        marginTop: 20, // بنسيب دي عشان لو النص قصير أوي، الزراير متلزقش فيه
+        marginTop: 20,
     }),
     authButton: (specificStyles) => ({
         flex: 1,

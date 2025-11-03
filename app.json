@@ -15,7 +15,11 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.youssef.caloraai"
+      "bundleIdentifier": "com.youssef.caloraai",
+      "infoPlist": {
+        "NSCameraUsageDescription": "This app needs access to your camera to scan meals and barcodes.",
+        "NSMicrophoneUsageDescription": "This app needs access to your microphone for camera features."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -23,14 +27,25 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.youssef.caloraai"
+      "package": "com.youssef.caloraai",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/icon.png"
     },
     "plugins": [
       "expo-font",
-      "expo-build-properties"
+      "expo-build-properties",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Calora AI to access your camera to scan meals and barcodes.",
+          "microphonePermission": "Allow Calora AI to access your microphone for camera features."
+        }
+      ]
     ],
     "extra": {
       "eas": {

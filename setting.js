@@ -1,4 +1,4 @@
-// SettingsScreen.js (الكود الكامل والصحيح)
+// SettingsScreen.js (الكود الكامل النهائي بعد الإصلاح)
 
 import React, { useState, useRef, useEffect } from 'react';
 import {
@@ -175,11 +175,11 @@ const SettingsIntegrationItem = ({ icon, label, isConnected, onConnect, onDiscon
   </View>
 );
 
-const SettingsScreen = ({ navigation, onThemeChange }) => {
+const SettingsScreen = ({ navigation, onThemeChange, appLanguage }) => {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [currentView, setCurrentView] = useState('main');
-  const [activeLanguage, setActiveLanguage] = useState('ar');
-  const [selectedLanguage, setSelectedLanguage] = useState('ar');
+  const [activeLanguage, setActiveLanguage] = useState(appLanguage);
+  const [selectedLanguage, setSelectedLanguage] = useState(appLanguage);
   const [exportDataContent, setExportDataContent] = useState('');
   const defaultReminderSettings = { breakfast: { enabled: false, time: '08:00' }, lunch: { enabled: false, time: '13:00' }, dinner: { enabled: false, time: '19:00' }, snacks: { enabled: false, time: '16:00' }, water: { enabled: false }, weighIn: { enabled: false, time: '07:30', day: 6 }, workout: { enabled: false, time: '17:00' }, stepsGoal: { enabled: false }, };
   const [reminders, setReminders] = useState(defaultReminderSettings);
@@ -197,16 +197,9 @@ const SettingsScreen = ({ navigation, onThemeChange }) => {
     const loadSettings = async () => {
       const savedTheme = await AsyncStorage.getItem('isDarkMode');
       setIsDarkMode(savedTheme === 'true');
-      const savedLang = await AsyncStorage.getItem('appLanguage');
-      if (savedLang) {
-        setActiveLanguage(savedLang);
-        setSelectedLanguage(savedLang);
-      }
 
-      // ✅ *** THE FIX IS HERE ***
-      // 'isAuthorized' is a boolean property, not a promise function.
       const checkAuthStatus = async () => {
-          const isAuth = GoogleFit.isAuthorized || false; // Direct check, default to false if undefined
+          const isAuth = GoogleFit.isAuthorized || false;
           setIsGoogleFitConnected(isAuth);
           await AsyncStorage.setItem('isGoogleFitConnected', String(isAuth));
       };
@@ -486,17 +479,19 @@ const SettingsScreen = ({ navigation, onThemeChange }) => {
         </>
       );
     }
+    // ✅ التعديل الأول هنا: إضافة View مع paddingTop لشاشة اللغة
     if (currentView === 'language') { 
         return (
-            <>
+            <View style={{ paddingTop: 20 }}>
                 <LanguageSelectionItem label="English" isSelected={selectedLanguage === 'en'} onPress={() => setSelectedLanguage('en')} theme={theme} isRTL={isRTL} />
                 <LanguageSelectionItem label="العربية" isSelected={selectedLanguage === 'ar'} onPress={() => setSelectedLanguage('ar')} theme={theme} isRTL={isRTL} />
-            </>
+            </View>
         );
     }
+    // ✅ التعديل الثاني هنا: إضافة paddingTop لشاشة تصدير البيانات
     if (currentView === 'export') { 
         return (
-            <View style={{paddingHorizontal: 16}}>
+            <View style={{paddingHorizontal: 16, paddingTop: 20}}>
                 <Text style={[styles.exportDescription, { color: theme.secondaryText, textAlign: isRTL ? 'right' : 'left' }]}>
                     {t('exportDataDescription')}
                 </Text>
