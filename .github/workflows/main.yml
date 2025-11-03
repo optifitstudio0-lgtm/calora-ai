@@ -24,20 +24,19 @@ jobs:
       id: cache-npm
       uses: actions/cache@v4
       with:
-        path: ./node_modules # مسار الكاش الآن هو في الجذر مباشرة
+        path: ./node_modules
         key: ${{ runner.os }}-build-${{ hashFiles('**/package-lock.json') }}
         restore-keys: |
           ${{ runner.os }}-build-
 
     # 4. تثبيت كل الاعتماديات (Dependencies)
     - name: Install Dependencies
-      # الشرط ده بيخلينا نتخطى الخطوة لو الكاش موجود
       if: steps.cache-npm.outputs.cache-hit != 'true'
       run: npm install
 
-    # 5. تثبيت حزمة metro-config المفقودة (خطوة احتياطية)
+    # 5. تثبيت حزمة metro-config المفقودة (بالاسم الصحيح)
     - name: Install missing metro config
-      run: npm install expo/metro-config --save-dev
+      run: npm install @expo/metro-config --save-dev
     
     # 6. بناء حزمة الجافاسكريبت (JS Bundle)
     - name: Build JS Bundle
@@ -45,7 +44,6 @@ jobs:
 
     # 7. بناء ملف الـ APK
     - name: Build Android APK
-      # الأمر ده لازم يتنفذ من داخل مجلد android
       run: |
         cd android
         ./gradlew assembleRelease -x bundleReleaseJsAndAssets
@@ -55,5 +53,4 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: app-release.apk
-        # المسار الآن أصبح أبسط لأننا في الجذر
         path: android/app/build/outputs/apk/release/app-release.apk
