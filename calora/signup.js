@@ -1,6 +1,6 @@
 // SignUpScreen.js (الكود الكامل والمعدل)
 
-import React, { useState, useCallback } from './calora/node_modules/@types/react';
+import React, { useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, SafeAreaView, TextInput,
   TouchableOpacity, Image, StatusBar, Dimensions, Alert, ActivityIndicator,
