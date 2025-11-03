@@ -1,4 +1,4 @@
-package com.youssef.caloraai
+package com.caloraai.app // <<< تم التعديل هنا
 
 import android.app.Application
 import com.facebook.react.PackageList
@@ -13,8 +13,8 @@ import com.facebook.soloader.SoLoader
 import expo.modules.ApplicationLifecycleDispatcher
 import expo.modules.ReactNativeHostWrapper
 
-// <<< هذا هو السطر الحاسم، تأكد من وجوده >>>
-import com.youssef.caloraai.BuildConfig
+// <<< تم التعديل هنا >>>
+import com.caloraai.app.BuildConfig
 
 class MainApplication : Application(), ReactApplication {
 
@@ -24,8 +24,7 @@ class MainApplication : Application(), ReactApplication {
           object : DefaultReactNativeHost(this) {
             override fun getPackages(): List<ReactPackage> =
                 PackageList(this).packages.apply {
-                  // Packages that cannot be autolinked yet can be added manually here, for example:
-                  // add(MyReactNativePackage())
+                  // Packages that cannot be autolinked yet can be added manually here
                 }
 
             override fun getJSMainModuleName(): String = "index"

@@ -1,4 +1,4 @@
-package com.youssef.caloraai
+package com.caloraai.app // <<< تم التعديل هنا
 
 import android.os.Build
 import android.os.Bundle
@@ -8,8 +8,8 @@ import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnable
 import com.facebook.react.defaults.DefaultReactActivityDelegate
 import expo.modules.ReactActivityDelegateWrapper
 
-// <<< هذا هو السطر الحاسم، تأكد من وجوده >>>
-import com.youssef.caloraai.R
+// <<< تم التعديل هنا >>>
+import com.caloraai.app.R
 
 class MainActivity : ReactActivity() {
   override fun onCreate(savedInstanceState: Bundle?) {
@@ -22,14 +22,14 @@ class MainActivity : ReactActivity() {
   override fun createReactActivityDelegate(): ReactActivityDelegate {
     return ReactActivityDelegateWrapper(
           this,
-          BuildConfig.IS_NEW_ARCHITECTURE_ENABLED,
+          BuildConfig.IS_NEW_ARCHITECTURE_ENABLED, // <<< سيتم جلبه تلقائيًا من الحزمة الصحيحة
           object : DefaultReactActivityDelegate(
               this,
               mainComponentName,
               fabricEnabled
           ){})
   }
-
+  // ... باقي الكود يبقى كما هو ...
   override fun invokeDefaultOnBackPressed() {
       if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.R) {
           if (!moveTaskToBack(false)) {
