@@ -1,7 +1,7 @@
-// File: android/build.gradle
+// File: android/build.gradle - النسخة النهائية والصحيحة
 
 buildscript {
-    // !! يجب أن تكون هذه الكتلة هي الأولى !!
+    // !! هذه الكتلة يجب أن تكون أول شيء داخل buildscript !!
     ext {
         buildToolsVersion = findProperty('android.buildToolsVersion') ?: '34.0.0'
         minSdkVersion = Integer.parseInt(findProperty('android.minSdkVersion') ?: '23')
@@ -16,7 +16,7 @@ buildscript {
         googlePlayServicesFitVersion = "21.2.0" 
     }
 
-    // الآن يمكننا استخدام المتغيرات المعرفة أعلاه بأمان
+    // الآن تأتي باقي الأقسام
     repositories {
         google()
         mavenCentral()
@@ -26,14 +26,14 @@ buildscript {
         classpath('com.android.tools.build:gradle:8.2.2')
         classpath('com.facebook.react:react-native-gradle-plugin')
         
-        // هذا السطر الآن سيعمل بشكل صحيح
+        // هذا السطر الآن سيعمل بشكل صحيح لأن kotlinVersion معرف أعلاه
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:${ext.kotlinVersion}")
         
         classpath('com.google.gms:google-services:4.4.1')
     }
 }
 
-// ... باقي الملف يبقى كما هو ...
+// باقي الملف يبقى كما هو
 apply plugin: "com.facebook.react.rootproject"
 
 allprojects {
