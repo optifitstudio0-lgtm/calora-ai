@@ -1,56 +1,51 @@
-// File: android/build.gradle - النسخة النهائية المدمجة والصحيحة
+name: Build Android APK
 
-buildscript {
-    ext {
-        buildToolsVersion = findProperty('android.buildToolsVersion') ?: '34.0.0'
-        minSdkVersion = Integer.parseInt(findProperty('android.minSdkVersion') ?: '23')
-        compileSdkVersion = Integer.parseInt(findProperty('android.compileSdkVersion') ?: '34')
-        targetSdkVersion = Integer.parseInt(findProperty('android.targetSdkVersion') ?: '34')
-        
-        // سنترك هذا المتغير هنا لأنه قد يستخدم في أماكن أخرى
-        kotlinVersion = findProperty('android.kotlinVersion') ?: '1.9.23'
-        
-        ndkVersion = findProperty('android.ndkVersion') ?: "25.1.8937393"
-        googlePlayServicesAuthVersion = "20.7.0"
-        googlePlayServicesFitVersion = "21.2.0" 
-    }
+on:
+  push:
+    branches: [ "main" ]
 
-    repositories {
-        google()
-        mavenCentral()
-    }
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+
+    - name: Cache Node Modules
+      id: cache-npm
+      uses: actions/cache@v4
+      with:
+        path: ./node_modules
+        key: ${{ runner.os }}-build-${{ hashFiles('**/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-build-
+
+    - name: Install Dependencies
+      if: steps.cache-npm.outputs.cache-hit != 'true'
+      run: npm install
+
+    - name: Install missing metro config
+      run: npm install @expo/metro-config --save-dev
     
-    dependencies {
-        // !! هذا هو التعديل الحاسم !!
-        // قمنا بإزالة أرقام الإصدارات الثابتة وإزالة ${ext.kotlinVersion}
-        classpath('com.android.tools.build:gradle')
-        classpath('com.facebook.react:react-native-gradle-plugin')
-        classpath('org.jetbrains.kotlin:kotlin-gradle-plugin')
-        
-        // تركنا سطر google-services كما طلبت
-        classpath('com.google.gms:google-services:4.4.1')
-    }
-}
+    - name: Create assets directory for bundle
+      run: mkdir -p android/app/src/main/assets
 
-// باقي الملف يبقى كما هو تمامًا
-apply plugin: "com.facebook.react.rootproject"
+    - name: Build JS Bundle
+      run: npx react-native bundle --platform android --dev false --entry-file node_modules/expo/AppEntry.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res
 
-allprojects {
-    repositories {
-        maven {
-            url(new File(['node', '--print', "require.resolve('react-native/package.json')"].execute(null, rootDir).text.trim(), '../android'))
-        }
-        maven {
-            url(new File(['node', '--print', "require.resolve('jsc-android/package.json', { paths: [require.resolve('react-native/package.json')] })"].execute(null, rootDir).text.trim(), '../dist'))
-        }
-
-        google()
-        mavenCentral()
-        maven { url 'https.www.jitpack.io' }
-    }
-}
-
-// @generated begin expo-camera-import
-def expoCameraMavenPath = new File(["node", "--print", "require.resolve('expo-camera/package.json')"].execute(null, rootDir).text.trim(), "../android/maven")
-allprojects { repositories { maven { url(expoCameraMavenPath) } } }
-// @generated end expo-camera-import
+    - name: Build Android APK
+      run: |
+        cd android
+        ./gradlew assembleRelease
+    
+    - name: Upload APK Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-release.apk
+        path: android/app/build/outputs/apk/release/app-release.apk
