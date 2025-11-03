@@ -7,41 +7,53 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
+    # 1. سحب الكود من المستودع
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
-    # خطوة جديدة للتأكد من هيكل الملفات
-    - name: List files to confirm structure
-      run: ls -R
-
+    # 2. إعداد بيئة Node.js
     - name: Set up Node.js
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v4
       with:
         node-version: '18'
 
-    # --- هذا هو التعديل الجذري والحاسم ---
-    # 1. دخلنا إلى المجلد الصحيح
-    # 2. استخدمنا npm install الأكثر تسامحاً
-    - name: Install dependencies
-      working-directory: ./calora  # <--- هذا هو السطر الحاسم
+    # 3. تفعيل الكاش لتسريع تحميل الاعتماديات في المرات القادمة
+    - name: Cache Node Modules
+      id: cache-npm
+      uses: actions/cache@v4
+      with:
+        path: ./node_modules # مسار الكاش الآن هو في الجذر مباشرة
+        key: ${{ runner.os }}-build-${{ hashFiles('**/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-build-
+
+    # 4. تثبيت كل الاعتماديات (Dependencies)
+    - name: Install Dependencies
+      # الشرط ده بيخلينا نتخطى الخطوة لو الكاش موجود
+      if: steps.cache-npm.outputs.cache-hit != 'true'
       run: npm install
 
-    # 2. بناء الباندل من داخل المجلد الصحيح
+    # 5. تثبيت حزمة metro-config المفقودة (خطوة احتياطية)
+    - name: Install missing metro config
+      run: npm install expo/metro-config --save-dev
+    
+    # 6. بناء حزمة الجافاسكريبت (JS Bundle)
     - name: Build JS Bundle
-      working-directory: ./calora  # <--- وهذا أيضاً
       run: npx react-native bundle --platform android --dev false --entry-file node_modules/expo/AppEntry.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res
 
-    # 3. بناء الـ APK من داخل المجلد الصحيح
+    # 7. بناء ملف الـ APK
     - name: Build Android APK
-      working-directory: ./calora  # <--- وهذا أيضاً
+      # الأمر ده لازم يتنفذ من داخل مجلد android
       run: |
         cd android
         ./gradlew assembleRelease -x bundleReleaseJsAndAssets
     
-    # 4. رفع الـ APK من المسار الصحيح
-    - name: Upload APK
+    # 8. رفع ملف الـ APK كـ artifact
+    - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
       with:
         name: app-release.apk
-        path: calora/android/app/build/outputs/apk/release/app-release.apk # <--- عدلنا المسار هنا
+        # المسار الآن أصبح أبسط لأننا في الجذر
+        path: android/app/build/outputs/apk/release/app-release.apk
