@@ -4,7 +4,7 @@ import Icon from 'react-native-vector-icons/Feather';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { supabase } from '../supabaseclient'; 
+import { supabase } from './supabaseclient'; 
 
 // --- الترجمات والثيمات (تبقى كما هي) ---
 const translations = {
