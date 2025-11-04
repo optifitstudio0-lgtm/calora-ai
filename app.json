@@ -51,6 +51,12 @@
         }
       ],
       "react-native-google-fit"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "c15bd2a0-4703-42bd-9145-d1f2a8d28b4e"
+      }
+    },
+    "owner": "sdsd2323"
   }
 }
