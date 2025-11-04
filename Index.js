@@ -1,6 +1,6 @@
 // In IndexScreen.js (الكود الكامل والنهائي والمعدل)
 
-import React, { useState, useRef, useEffect, useCallback } from 'react'; // <--- الخطوة 1: تم التأكد من وجود useCallback هنا
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, Image, Dimensions,
   TouchableOpacity, StatusBar, SafeAreaView, Animated,
@@ -109,14 +109,14 @@ const IndexScreen = ({ navigation, route }) => {
         }
     }).current;
     const viewabilityConfig = useRef({ viewAreaCoveragePercentThreshold: 50 }).current;
-
-    // ✅✅✅  الخطوة 2: هنا التعديل الأساسي لحل المشكلة ✅✅✅
+    
+    // ✅✅✅  الإصلاح رقم 2: هنا تم حل مشكلة زر "التالي" ✅✅✅
     const handleNextPress = useCallback(() => {
         const nextSlideIndex = currentIndex + 1;
         if (nextSlideIndex < slidesContent.length && slidesRef.current) {
             slidesRef.current.scrollToIndex({ index: nextSlideIndex });
         }
-    }, [currentIndex]); // بنقول للدالة إنها تعتمد على أحدث قيمة لـ currentIndex
+    }, [currentIndex]); // أضفنا currentIndex هنا لتحديث الدالة دائمًا
     
     const slides = slidesContent.map(slide => ({
         ...slide,
@@ -195,7 +195,7 @@ const IndexScreen = ({ navigation, route }) => {
 };
 
 // ==========================================================
-// ===== الأنماط (بدون تغيير) =====
+// ===== الأنماط =====
 // ==========================================================
 const styles = {
     container: (theme) => ({
@@ -247,8 +247,10 @@ const styles = {
         lineHeight: 20,
         opacity: 0.7,
     }),
+    // ✅✅✅  الإصلاح رقم 1: هنا تم حل مشكلة النقاط ✅✅✅
     paginatorContainer: (isRTL) => ({
-        flexDirection: isRTL ? 'row-reverse' : 'row',
+        flexDirection: 'row', // نجعلها دائماً row
+        justifyContent: isRTL ? 'flex-end' : 'flex-start', // نحدد المحاذاة بناءً على اللغة
         marginBottom: 25,
     }),
     dot: (theme) => ({

@@ -27,6 +27,7 @@
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#ffffff"
       },
+      "supportsRtl": true,
       "edgeToEdgeEnabled": true,
       "package": "com.youssef.caloraai",
       "permissions": [
