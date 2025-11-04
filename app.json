@@ -29,7 +29,7 @@
       },
       "supportsRtl": true,
       "edgeToEdgeEnabled": true,
-      "package": "com.youssef.caloraai",
+      "package": "com.caloraai.app",
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO",

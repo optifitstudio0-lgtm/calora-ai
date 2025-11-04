@@ -1,4 +1,4 @@
-// StepsScreen.js - الكود الكامل بالربط الفعلي
+// StepsScreen.js - الكود الكامل مع إضافات التشخيص
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
     StyleSheet, View, Text, ScrollView, SafeAreaView, TouchableOpacity, 
@@ -10,8 +10,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Pedometer } from 'expo-sensors';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming, useAnimatedProps } from 'react-native-reanimated';
 import Svg, { Circle, Path } from 'react-native-svg';
-// ✅ *** REAL GOOGLE FIT INTEGRATION ***: استيراد المكتبة
-import GoogleFit from 'react-native-google-fit';
+import GoogleFit, { Scopes } from 'react-native-google-fit';
 
 
 // --- الثوابت ---
@@ -133,103 +132,118 @@ const StepsScreen = () => {
             const savedTheme = await AsyncStorage.getItem('isDarkMode');
             const currentTheme = savedTheme === 'true' ? darkTheme : lightTheme;
             setTheme(currentTheme);
-
             const savedLang = await AsyncStorage.getItem('appLanguage');
             const currentLang = savedLang || 'ar';
             setLanguage(currentLang);
             setIsRTL(currentLang === 'ar');
         } catch (e) { console.error('Failed to load settings.', e); }
     };
-
-    // ✅ *** REAL GOOGLE FIT INTEGRATION ***: دالة جلب البيانات التاريخية المحدثة
-    const fetchHistoricalData = useCallback(async (isMountedFlag, period, lang, isGFConnected) => {
-        const daysToFetch = period === 'week' ? 7 : 30;
-        const data = [];
-        try {
-            for (let i = daysToFetch - 1; i >= 0; i--) {
-                const dayEnd = new Date(); dayEnd.setDate(dayEnd.getDate() - i); dayEnd.setHours(23, 59, 59, 999);
-                const dayStart = new Date(dayEnd); dayStart.setHours(0, 0, 0, 0);
-                
-                let steps = 0;
-                if (isGFConnected) {
-                     const gfResult = await GoogleFit.getDailyStepCountSamples({ startDate: dayStart.toISOString(), endDate: dayEnd.toISOString() });
-                     const estimatedSteps = gfResult.find(res => res.source === 'com.google.android.gms:estimated_steps');
-                     if(estimatedSteps && estimatedSteps.steps.length > 0) {
-                        steps = estimatedSteps.steps.reduce((sum, step) => sum + step.value, 0);
-                     }
-                } else { // Fallback to Pedometer if not connected
-                    const result = await Pedometer.getStepCountAsync(dayStart, dayEnd);
-                    steps = result.steps;
-                }
-
-                if (isMountedFlag) {
-                    if (period === 'week') {
-                        const weekDays = translations[lang].weekdays;
-                        data.push({ day: weekDays[dayStart.getDay()], steps: steps });
-                    } else {
-                        data.push({ day: `${dayStart.getDate()}`, steps: steps });
-                    }
-                }
-            }
-        } catch (error) { console.error("Error fetching historical data:", error); }
-        if (isMountedFlag) setHistoricalData(data);
-    }, []);
-
+    
+    // --- 🔍 التعديل الجوهري للتشخيص هنا ---
     useFocusEffect(
         useCallback(() => {
             let isMounted = true;
             setLoading(true);
 
+            // --- 1. دالة تشخيص Pedometer ---
+            const diagnosePedometer = async () => {
+                Alert.alert("تشخيص Pedometer", "1. بدء فحص حساس الخطوات...");
+                try {
+                    const isAvailable = await Pedometer.isAvailableAsync();
+                    Alert.alert("تشخيص Pedometer", `2. هل الحساس متوفر؟ -> ${isAvailable}`);
+                    if (!isAvailable) {
+                        Alert.alert("فشل Pedometer", "الحساس غير متوفر على هذا الجهاز.");
+                        return false;
+                    }
+
+                    const { status } = await Pedometer.requestPermissionsAsync();
+                    Alert.alert("تشخيص Pedometer", `3. ما هي حالة الإذن؟ -> ${status}`);
+                    if (status !== 'granted') {
+                        Alert.alert("فشل Pedometer", "تم رفض إذن الوصول للنشاط البدني.");
+                        return false;
+                    }
+                    
+                    Alert.alert("نجاح Pedometer", "الحساس متوفر والإذن ممنوح. سأحاول الآن قراءة الخطوات.");
+                    return true;
+
+                } catch (error) {
+                    Alert.alert("خطأ كارثي في Pedometer", `حدث خطأ أثناء فحص الحساس أو الإذن: ${error.message}`);
+                    return false;
+                }
+            };
+            
+            // --- 2. دالة تشخيص Google Fit ---
+            const diagnoseGoogleFit = async () => {
+                Alert.alert("تشخيص Google Fit", "1. بدء فحص الاتصال بـ Google Fit...");
+                const options = { scopes: [ Scopes.FITNESS_ACTIVITY_READ ] };
+                try {
+                    const authResult = await GoogleFit.authorize(options);
+                    Alert.alert("تشخيص Google Fit", `2. نتيجة محاولة الاتصال: Success -> ${authResult.success}, Message -> ${authResult.message}`);
+                    
+                    if (authResult.success) {
+                        await AsyncStorage.setItem('isGoogleFitConnected', 'true');
+                        Alert.alert("نجاح Google Fit", "تم الاتصال بنجاح. سأحاول الآن قراءة الخطوات.");
+                        return true;
+                    } else {
+                        await AsyncStorage.setItem('isGoogleFitConnected', 'false');
+                        Alert.alert("فشل Google Fit", `فشل الاتصال. السبب: ${authResult.message}. سأعود لاستخدام حساس الهاتف.`);
+                        return false;
+                    }
+
+                } catch (error) {
+                    await AsyncStorage.setItem('isGoogleFitConnected', 'false');
+                    Alert.alert("خطأ كارثي في Google Fit", `حدث خطأ أثناء الاتصال: ${error.message}. سأعود لاستخدام حساس الهاتف.`);
+                    return false;
+                }
+            };
+
+            // --- 3. المنطق الرئيسي بعد التشخيص ---
             const startDataFetch = async () => {
                 await loadSettings();
-                const currentLang = (await AsyncStorage.getItem('appLanguage')) || 'ar';
                 const savedGoal = await AsyncStorage.getItem('stepsGoal');
                 if (isMounted && savedGoal) setStepsGoal(parseInt(savedGoal, 10));
-                
-                // ✅ *** REAL GOOGLE FIT INTEGRATION ***: التحقق من الاتصال واستخدام المصدر المناسب
-                const isGFConnected = await AsyncStorage.getItem('isGoogleFitConnected') === 'true';
 
-                if (isGFConnected && GoogleFit.isAuthorized) {
+                const isGoogleFitAuthorized = await diagnoseGoogleFit();
+
+                if (isGoogleFitAuthorized) {
+                    // جلب الخطوات من Google Fit
                     const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
                     const todayEnd = new Date();
                     try {
-                        const stepsResult = await GoogleFit.getDailyStepCountSamples({ startDate: todayStart.toISOString(), endDate: todayEnd.toISOString() });
-                        const estimatedSteps = stepsResult.find(res => res.source === 'com.google.android.gms:estimated_steps');
+                        const res = await GoogleFit.getDailyStepCountSamples({ startDate: todayStart.toISOString(), endDate: todayEnd.toISOString() });
+                        const estimatedSteps = res.find(r => r.source === 'com.google.android.gms:estimated_steps');
                         if (isMounted && estimatedSteps && estimatedSteps.steps.length > 0) {
-                            const totalSteps = estimatedSteps.steps.reduce((sum, step) => sum + step.value, 0);
-                            setCurrentStepCount(totalSteps);
+                            const total = estimatedSteps.steps.reduce((sum, s) => sum + s.value, 0);
+                            setCurrentStepCount(total);
+                        } else {
+                           setCurrentStepCount(0); // No steps found for today
                         }
                     } catch (e) {
-                        console.log("Error fetching steps from Google Fit, falling back to Pedometer:", e);
-                        fetchWithPedometer(isMounted); // Fallback in case of error
+                        Alert.alert("خطأ Google Fit", `فشل جلب البيانات بعد الاتصال: ${e.message}`);
                     }
                 } else {
-                    fetchWithPedometer(isMounted); // Use Pedometer if not connected
+                    // فشل Google Fit، سنعود إلى Pedometer
+                    const isPedometerOK = await diagnosePedometer();
+                    if(isPedometerOK) {
+                        try {
+                           const start = new Date(); start.setHours(0, 0, 0, 0);
+                           const end = new Date();
+                           const result = await Pedometer.getStepCountAsync(start, end);
+                           if (isMounted) setCurrentStepCount(result ? result.steps : 0);
+                        } catch(e) {
+                           Alert.alert("خطأ Pedometer", `فشل جلب البيانات بعد نجاح الفحص: ${e.message}`);
+                        }
+                    }
                 }
 
-                await fetchHistoricalData(isMounted, selectedPeriod, currentLang, isGFConnected);
                 if (isMounted) setLoading(false);
             };
 
-            const fetchWithPedometer = async (isMountedFlag) => {
-                 try {
-                    const isAvailable = await Pedometer.isAvailableAsync();
-                    if (!isAvailable) { if (isMountedFlag) Alert.alert(t('notAvailableTitle'), t('notAvailableMsg')); return; }
-                    const { status } = await Pedometer.requestPermissionsAsync();
-                    if (status !== 'granted') { if (isMountedFlag) Alert.alert(t('permissionDeniedTitle'), t('permissionDeniedMsg')); return; }
-                    const start = new Date(); start.setHours(0, 0, 0, 0);
-                    const pastStepCountResult = await Pedometer.getStepCountAsync(start, new Date());
-                    if (isMountedFlag) {
-                        setCurrentStepCount(pastStepCountResult ? pastStepCountResult.steps : 0);
-                    }
-                } catch (error) { console.error("Failed to start pedometer:", error); } 
-            }
-            
             startDataFetch();
             return () => { isMounted = false; };
-        }, [selectedPeriod, fetchHistoricalData])
+        }, [selectedPeriod])
     );
-
+    
     const handleSaveGoalFromPrompt = (text) => {
         const newGoal = parseInt(text, 10);
         if (!isNaN(newGoal) && newGoal > 0 && newGoal <= MAX_STEPS_GOAL) {
