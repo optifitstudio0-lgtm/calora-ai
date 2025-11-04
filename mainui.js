@@ -1,5 +1,3 @@
-// mainui.js (الكود الكامل والنهائي بعد إصلاح التقويم والشريط السفلي)
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { StyleSheet, View, Text, ScrollView, SafeAreaView, TouchableOpacity, Dimensions, Image, Platform, TextInput, FlatList, ActivityIndicator, Alert, Modal, StatusBar } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -108,12 +106,10 @@ const formatDateKey = (date) => { const year = date.getFullYear(); const month =
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 async function registerForPushNotificationsAsync() { if (Platform.OS === 'android') { await Notifications.setNotificationChannelAsync('default', { name: 'default', importance: Notifications.AndroidImportance.MAX, vibrationPattern: [0, 250, 250, 250], lightColor: '#FF231F7C', }); } if (Device.isDevice) { const { status: existingStatus } = await Notifications.getPermissionsAsync(); let finalStatus = existingStatus; if (existingStatus !== 'granted') { const { status } = await Notifications.requestPermissionsAsync(); finalStatus = status; } if (finalStatus !== 'granted') { console.log('User did not grant notification permissions.'); return; } } else { console.log('Must use physical device for Push Notifications'); } }
 
-// ✅✅✅ [الإصلاح رقم 1: التقويم] ✅✅✅
 const DateNavigator = ({ selectedDate, onDateSelect, referenceToday, theme, t, isRTL, language }) => {
     const handlePrevWeek = () => { const newDate = new Date(selectedDate); newDate.setDate(selectedDate.getDate() - 7); onDateSelect(newDate); };
     const handleNextWeek = () => { const newDate = new Date(selectedDate); newDate.setDate(selectedDate.getDate() + 7); onDateSelect(newDate); };
     
-    // --- [التعديل هنا] ---
     let weekDays = t('weekdays');
     const dates = [];
     const dayIndex = selectedDate.getDay();
@@ -127,12 +123,10 @@ const DateNavigator = ({ selectedDate, onDateSelect, referenceToday, theme, t, i
         dates.push(date);
     }
 
-    // نعكس ترتيب الأيام والتواريخ لو اللغة عربي
     if (isRTL) {
         weekDays = [...weekDays].reverse();
         dates.reverse();
     }
-    // --- [نهاية التعديل] ---
 
     const isSelected = (date) => date.toDateString() === selectedDate.toDateString();
     const monthYearString = selectedDate.toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US', { month: 'long', year: 'numeric' });
@@ -160,10 +154,21 @@ const DateNavigator = ({ selectedDate, onDateSelect, referenceToday, theme, t, i
                     const normalizedDate = new Date(date);
                     normalizedDate.setHours(0, 0, 0, 0);
                     const isFutureDate = normalizedDate > referenceToday;
+                    const isDaySelected = isSelected(date);
+
                     return (
                         <TouchableOpacity key={index} onPress={() => onDateSelect(date)} disabled={isFutureDate}>
-                            <View style={[styles.dateCircle, isSelected(date) ? styles.activeCircle(theme) : styles.inactiveCircle(theme)]}>
-                                <Text style={[styles.dateText(theme), isSelected(date) && styles.activeText(theme), isFutureDate && styles.disabledDateText(theme)]}>{date.getDate()}</Text>
+                            <View style={[
+                                styles.dateCircle, 
+                                isDaySelected && { backgroundColor: theme.primary }
+                            ]}>
+                                <Text style={[
+                                    styles.dateText(theme), 
+                                    isDaySelected && styles.activeText(theme), 
+                                    isFutureDate && styles.disabledDateText(theme)
+                                ]}>
+                                    {date.getDate()}
+                                </Text>
                             </View>
                         </TouchableOpacity>
                     );
@@ -172,7 +177,6 @@ const DateNavigator = ({ selectedDate, onDateSelect, referenceToday, theme, t, i
         </View>
     );
 };
-
 
 const SummaryCard = ({ data, dailyGoal, theme, t }) => { const SIZE = Dimensions.get('window').width * 0.5; const STROKE_WIDTH = 18; const INDICATOR_SIZE = 24; const RADIUS = SIZE / 2; const CENTER_RADIUS = RADIUS - STROKE_WIDTH / 2; const remaining = Math.round(dailyGoal - data.food + (data.exercise || 0)); const progressValue = dailyGoal > 0 ? Math.min(data.food / dailyGoal, 1) : 0; const animatedProgress = useSharedValue(0); useEffect(() => { animatedProgress.value = withTiming(progressValue, { duration: 1000 }); }, [progressValue]); const animatedPathProps = useAnimatedProps(() => { const angle = animatedProgress.value * 360; if (angle < 0.1) { return { d: '' }; } return { d: describeArc(SIZE / 2, SIZE / 2, CENTER_RADIUS, 0, angle), }; }); const indicatorAnimatedStyle = useAnimatedStyle(() => { const angleRad = (animatedProgress.value * 360 - 90) * (Math.PI / 180); const x = (SIZE / 2) + CENTER_RADIUS * Math.cos(angleRad); const y = (SIZE / 2) + CENTER_RADIUS * Math.sin(angleRad); return { transform: [{ translateX: x }, { translateY: y }], }; }); return (<View style={[styles.card(theme), { alignItems: 'center' }]}><View style={[styles.summaryCircleContainer, { width: SIZE, height: SIZE }]}><Svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}><Circle cx={SIZE / 2} cy={SIZE / 2} r={CENTER_RADIUS} stroke={theme.progressUnfilled} strokeWidth={STROKE_WIDTH} fill="transparent" /><AnimatedPath animatedProps={animatedPathProps} stroke={theme.primary} strokeWidth={STROKE_WIDTH} fill="transparent" strokeLinecap="round" /></Svg><Animated.View style={[styles.progressIndicatorDot(theme), { width: INDICATOR_SIZE, height: INDICATOR_SIZE, borderRadius: INDICATOR_SIZE / 2, marginLeft: -(INDICATOR_SIZE / 2), marginTop: -(INDICATOR_SIZE / 2), }, indicatorAnimatedStyle]} /><View style={styles.summaryTextContainer}><Text style={styles.remainingCaloriesText(theme)}>{remaining}</Text><Text style={styles.remainingLabel(theme)}>{t('remainingCalories')}</Text></View></View></View>); };
 const NutrientRow = ({ label, consumed, goal, color, unit = 'جم', isLimit = false, theme, isRTL }) => { const isOverLimit = isLimit && consumed > goal; const progressColor = isOverLimit ? theme.overLimit : color; return (<View style={styles.nutrientRowContainer}><View style={styles.nutrientRowHeader(isRTL)}><Text style={styles.nutrientRowLabel(theme)}>{label}</Text><Text style={styles.nutrientRowValue(theme)}>{Math.round(consumed)} / {goal} {unit}</Text></View><Progress.Bar progress={goal > 0 ? consumed / goal : 0} width={null} color={progressColor} unfilledColor={`${progressColor}30`} borderWidth={0} height={8} borderRadius={4} /></View>); };
@@ -263,6 +267,7 @@ function DiaryScreen({ navigation, route, setHasProgress, theme, t, isRTL, langu
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const INDICATOR_DIAMETER = 70;
 
+// ======================= START: الكود المعدل هنا =======================
 const MagicLineTabBar = ({ state, descriptors, navigation, theme, t, isRTL }) => {
     const TAB_COUNT = state.routes.length; 
     const TAB_WIDTH = SCREEN_WIDTH / TAB_COUNT; 
@@ -286,11 +291,18 @@ const MagicLineTabBar = ({ state, descriptors, navigation, theme, t, isRTL }) =>
 
     const indicatorAnimatedStyle = useAnimatedStyle(() => ({ transform: [{ translateX: translateX.value }] }));
     const routes = isRTL ? [...state.routes].reverse() : state.routes;
+    
     return ( 
         <View style={styles.tabBarContainer(theme)}>
             <View style={styles.animationWrapper}><LeafAnimation trigger={state.index} /></View>
-            <Animated.View style={[styles.indicatorContainer, { width: TAB_WIDTH }, indicatorAnimatedStyle]} />
             
+            <Animated.View style={[styles.indicatorContainer, { width: TAB_WIDTH }, indicatorAnimatedStyle]}>
+                <View style={[styles.indicator(theme), { backgroundColor: theme.tabBarIndicator }]}>
+                    <View style={[styles.cutout, styles.cutoutLeft(theme)]} />
+                    <View style={[styles.cutout, styles.cutoutRight(theme)]} />
+                </View>
+            </Animated.View>
+
             {routes.map((route) => { 
                 const descriptor = descriptors[route.key];
                 const { options } = descriptor;
@@ -313,7 +325,7 @@ const MagicLineTabBar = ({ state, descriptors, navigation, theme, t, isRTL }) =>
                 const isProfileTab = route.name === 'ProfileStack';
                 
                 return ( 
-                    <TouchableOpacity key={route.key} style={[styles.tabItem, { width: TAB_WIDTH }]} onPress={onPress}>
+                    <TouchableOpacity key={route.key} style={[styles.tabItem, { width: TAB_WIDTH, zIndex: 1 }]} onPress={onPress}>
                         <Animated.View style={[styles.tabIconContainer, iconAnimatedStyle]}>
                             {isProfileTab ? (
                                 <Image 
@@ -324,7 +336,8 @@ const MagicLineTabBar = ({ state, descriptors, navigation, theme, t, isRTL }) =>
                                 <Ionicons 
                                     name={options.tabBarIconName || 'alert-circle-outline'} 
                                     size={28} 
-                                    color={isFocused ? theme.primary : theme.tabBarIcon} // تغيير اللون عند التركيز
+                                    // <<< التغيير هنا: تم تغيير لون الأيقونة النشطة إلى اللون الأساسي للنص (الأسود في الثيم الفاتح)
+                                    color={isFocused ? theme.textPrimary : theme.tabBarIcon}
                                 />
                             )}
                         </Animated.View>
@@ -332,15 +345,10 @@ const MagicLineTabBar = ({ state, descriptors, navigation, theme, t, isRTL }) =>
                     </TouchableOpacity> 
                 ); 
             })}
-            <Animated.View style={[styles.indicatorContainer, { width: TAB_WIDTH }, indicatorAnimatedStyle]}>
-                <View style={[styles.indicator(theme), { backgroundColor: theme.tabBarIndicator }]}>
-                    <View style={[styles.cutout, styles.cutoutLeft(theme)]} />
-                    <View style={[styles.cutout, styles.cutoutRight(theme)]} />
-                </View>
-            </Animated.View>
         </View> 
     );
 };
+// ======================= END: نهاية الكود المعدل =======================
 
 const Tab = createBottomTabNavigator();
 const DiaryStack = createStackNavigator();
@@ -456,8 +464,8 @@ const styles = {
     weekDayText: (theme) => ({ fontSize: 14, color: theme.textSecondary, fontWeight: '500' }), 
     datesContainer: { flexDirection: 'row', justifyContent: 'space-around' }, 
     dateCircle: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
-    activeCircle: (theme) => ({ backgroundColor: theme.primary, borderWidth: 0 }),
-    inactiveCircle: (theme) => ({ borderWidth: 0 }),
+    activeCircle: (theme) => ({ backgroundColor: theme.primary }),
+    inactiveCircle: (theme) => ({}),
     dateText: (theme) => ({ fontSize: 16, color: theme.textPrimary, fontWeight: '600' }), 
     activeText: (theme) => ({ color: theme.white }), 
     disabledDateText: (theme) => ({ color: theme.disabled }), 

@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, SafeAreaView,
   StatusBar, Animated, I18nManager, Platform, Modal, TextInput, Clipboard,
-  DevSettings, ActivityIndicator
+  ActivityIndicator
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -13,6 +13,7 @@ import * as TaskManager from 'expo-task-manager';
 import { Pedometer } from 'expo-sensors';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import GoogleFit, { Scopes } from 'react-native-google-fit';
+import RNRestart from 'react-native-restart'; // <-- 1. استيراد المكتبة الجديدة
 
 // Assume notificationsdata.js exists in the same directory
 import notificationsData from './notificationsdata'; 
@@ -358,6 +359,7 @@ const SettingsScreen = ({ navigation, onThemeChange, appLanguage }) => {
     }
   };
 
+  // ✅✅✅ التعديل الجوهري هنا ✅✅✅
   const handleSaveLanguage = async () => {
     if (activeLanguage === selectedLanguage) {
       setCurrentView('main');
@@ -367,7 +369,22 @@ const SettingsScreen = ({ navigation, onThemeChange, appLanguage }) => {
       await AsyncStorage.setItem('appLanguage', selectedLanguage);
       const isRTL = selectedLanguage === 'ar';
       I18nManager.forceRTL(isRTL);
-      Alert.alert( t('languageSaved', selectedLanguage), t('languageSettingsUpdated', selectedLanguage), [ { text: 'OK', onPress: () => { DevSettings.reload(); }, }, ], { cancelable: false });
+
+      // اعرض رسالة للمستخدم إن التطبيق هيعمل إعادة تشغيل ثم نفذ الأمر
+      Alert.alert(
+        t('languageSaved', selectedLanguage),
+        t('languageSettingsUpdated', selectedLanguage),
+        [
+          {
+            text: 'OK',
+            // عند الضغط على "OK"، اعمل إعادة تشغيل كاملة للتطبيق
+            onPress: () => {
+              RNRestart.Restart(); // <-- 2. استخدام المكتبة الصحيحة
+            },
+          },
+        ],
+        { cancelable: false }
+      );
     } catch (e) {
       console.error("Failed to save language settings.", e);
       Alert.alert("Error", "Could not save language settings.");
@@ -479,7 +496,6 @@ const SettingsScreen = ({ navigation, onThemeChange, appLanguage }) => {
         </>
       );
     }
-    // ✅ التعديل الأول هنا: إضافة View مع paddingTop لشاشة اللغة
     if (currentView === 'language') { 
         return (
             <View style={{ paddingTop: 20 }}>
@@ -488,7 +504,6 @@ const SettingsScreen = ({ navigation, onThemeChange, appLanguage }) => {
             </View>
         );
     }
-    // ✅ التعديل الثاني هنا: إضافة paddingTop لشاشة تصدير البيانات
     if (currentView === 'export') { 
         return (
             <View style={{paddingHorizontal: 16, paddingTop: 20}}>
