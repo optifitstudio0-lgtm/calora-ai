@@ -109,30 +109,24 @@ async function registerForPushNotificationsAsync() { if (Platform.OS === 'androi
 const DateNavigator = ({ selectedDate, onDateSelect, referenceToday, theme, t, isRTL, language }) => {
     const handlePrevWeek = () => { const newDate = new Date(selectedDate); newDate.setDate(selectedDate.getDate() - 7); onDateSelect(newDate); };
     const handleNextWeek = () => { const newDate = new Date(selectedDate); newDate.setDate(selectedDate.getDate() + 7); onDateSelect(newDate); };
-    
-    // <<< التغيير هنا: سنعتمد على React Native لقلب الواجهة ولن نعكس المصفوفة يدوياً
     const weekDays = t('weekdays');
     const dates = [];
     const dayIndex = selectedDate.getDay();
     const startDate = new Date(selectedDate);
-    // تعديل بسيط هنا ليتناسب مع بداية الأسبوع (الأحد)
-    const startDayOffset = isRTL ? (dayIndex + 1) % 7 : dayIndex; // في بعض الأنظمة العربية السبت هو بداية الأسبوع
+    const startDayOffset = isRTL ? (dayIndex + 1) % 7 : dayIndex;
     startDate.setDate(selectedDate.getDate() - dayIndex);
     startDate.setHours(0, 0, 0, 0);
-
     for (let i = 0; i < 7; i++) {
         const date = new Date(startDate);
         date.setDate(startDate.getDate() + i);
         dates.push(date);
     }
-    
     const isSelected = (date) => date.toDateString() === selectedDate.toDateString();
     const monthYearString = selectedDate.toLocaleString(language === 'ar' ? 'ar-EG' : 'en-US', { month: 'long', year: 'numeric' });
     const todayWeekStart = new Date(referenceToday);
     todayWeekStart.setDate(referenceToday.getDate() - referenceToday.getDay());
     todayWeekStart.setHours(0, 0, 0, 0);
     const isNextDisabled = startDate.getTime() >= todayWeekStart.getTime();
-    
     return (
         <View style={styles.dateNavContainer(theme)}>
             <View style={styles.dateNavHeader(isRTL)}>
@@ -153,18 +147,10 @@ const DateNavigator = ({ selectedDate, onDateSelect, referenceToday, theme, t, i
                     normalizedDate.setHours(0, 0, 0, 0);
                     const isFutureDate = normalizedDate > referenceToday;
                     const isDaySelected = isSelected(date);
-
                     return (
                         <TouchableOpacity key={index} onPress={() => onDateSelect(date)} disabled={isFutureDate}>
-                            <View style={[
-                                styles.dateCircle, 
-                                isDaySelected && { backgroundColor: theme.primary }
-                            ]}>
-                                <Text style={[
-                                    styles.dateText(theme), 
-                                    isDaySelected && styles.activeText(theme), 
-                                    isFutureDate && styles.disabledDateText(theme)
-                                ]}>
+                            <View style={[ styles.dateCircle, isDaySelected && { backgroundColor: theme.primary } ]}>
+                                <Text style={[ styles.dateText(theme), isDaySelected && styles.activeText(theme), isFutureDate && styles.disabledDateText(theme) ]}>
                                     {date.getDate()}
                                 </Text>
                             </View>
@@ -175,7 +161,6 @@ const DateNavigator = ({ selectedDate, onDateSelect, referenceToday, theme, t, i
         </View>
     );
 };
-
 const SummaryCard = ({ data, dailyGoal, theme, t }) => { const SIZE = Dimensions.get('window').width * 0.5; const STROKE_WIDTH = 18; const INDICATOR_SIZE = 24; const RADIUS = SIZE / 2; const CENTER_RADIUS = RADIUS - STROKE_WIDTH / 2; const remaining = Math.round(dailyGoal - data.food + (data.exercise || 0)); const progressValue = dailyGoal > 0 ? Math.min(data.food / dailyGoal, 1) : 0; const animatedProgress = useSharedValue(0); useEffect(() => { animatedProgress.value = withTiming(progressValue, { duration: 1000 }); }, [progressValue]); const animatedPathProps = useAnimatedProps(() => { const angle = animatedProgress.value * 360; if (angle < 0.1) { return { d: '' }; } return { d: describeArc(SIZE / 2, SIZE / 2, CENTER_RADIUS, 0, angle), }; }); const indicatorAnimatedStyle = useAnimatedStyle(() => { const angleRad = (animatedProgress.value * 360 - 90) * (Math.PI / 180); const x = (SIZE / 2) + CENTER_RADIUS * Math.cos(angleRad); const y = (SIZE / 2) + CENTER_RADIUS * Math.sin(angleRad); return { transform: [{ translateX: x }, { translateY: y }], }; }); return (<View style={[styles.card(theme), { alignItems: 'center' }]}><View style={[styles.summaryCircleContainer, { width: SIZE, height: SIZE }]}><Svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}><Circle cx={SIZE / 2} cy={SIZE / 2} r={CENTER_RADIUS} stroke={theme.progressUnfilled} strokeWidth={STROKE_WIDTH} fill="transparent" /><AnimatedPath animatedProps={animatedPathProps} stroke={theme.primary} strokeWidth={STROKE_WIDTH} fill="transparent" strokeLinecap="round" /></Svg><Animated.View style={[styles.progressIndicatorDot(theme), { width: INDICATOR_SIZE, height: INDICATOR_SIZE, borderRadius: INDICATOR_SIZE / 2, marginLeft: -(INDICATOR_SIZE / 2), marginTop: -(INDICATOR_SIZE / 2), }, indicatorAnimatedStyle]} /><View style={styles.summaryTextContainer}><Text style={styles.remainingCaloriesText(theme)}>{remaining}</Text><Text style={styles.remainingLabel(theme)}>{t('remainingCalories')}</Text></View></View></View>); };
 const NutrientRow = ({ label, consumed, goal, color, unit = 'جم', isLimit = false, theme }) => { const isOverLimit = isLimit && consumed > goal; const progressColor = isOverLimit ? theme.overLimit : color; return (<View style={styles.nutrientRowContainer}><View style={styles.nutrientRowHeader}><Text style={styles.nutrientRowLabel(theme)}>{label}</Text><Text style={styles.nutrientRowValue(theme)}>{Math.round(consumed)} / {goal} {unit}</Text></View><Progress.Bar progress={goal > 0 ? consumed / goal : 0} width={null} color={progressColor} unfilledColor={`${progressColor}30`} borderWidth={0} height={8} borderRadius={4} /></View>); };
 const NutrientSummaryCard = ({ data, theme, t }) => { const nutrients = [{ label: t('protein'), consumed: data.protein.consumed, goal: data.protein.goal, color: theme.protein, unit: t('g_unit') }, { label: t('carbs'), consumed: data.carbs.consumed, goal: data.carbs.goal, color: theme.carbs, unit: t('g_unit') }, { label: t('fat'), consumed: data.fat.consumed, goal: data.fat.goal, color: theme.fat, unit: t('g_unit') }, { label: t('fiber'), consumed: data.fiber.consumed, goal: data.fiber.goal, color: theme.fiber, unit: t('g_unit') }, { label: t('sugar'), consumed: data.sugar.consumed, goal: data.sugar.goal, color: theme.sugar, unit: t('g_unit'), isLimit: true }, { label: t('sodium'), consumed: data.sodium.consumed, goal: data.sodium.goal, color: theme.sodium, unit: t('mg_unit'), isLimit: true },]; return (<View style={styles.card(theme)}>{nutrients.map((nutrient, index) => (<NutrientRow key={index} {...nutrient} theme={theme} />))}</View>); };
@@ -259,7 +244,12 @@ function DiaryScreen({ navigation, route, setHasProgress, theme, t, isRTL, langu
     const calculatedTotals = allFoodItems.reduce((acc, item) => { return { food: acc.food + (item.calories || 0), protein: acc.protein + (item.p || 0), carbs: acc.carbs + (item.c || 0), fat: acc.fat + (item.f || 0), fiber: acc.fiber + (item.fib || 0), sugar: acc.sugar + (item.sug || 0), sodium: acc.sodium + (item.sod || 0), }; }, { food: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0, sodium: 0 }); 
     const totalExerciseCalories = (dailyData.exercises || []).reduce((sum, ex) => sum + (ex.calories || 0), 0); 
     useEffect(() => { const progressMade = calculatedTotals.food > 0 || totalExerciseCalories > 0; setHasProgress(progressMade); }, [calculatedTotals.food, totalExerciseCalories, setHasProgress]); 
-    return ( <SafeAreaView style={styles.rootContainer(theme)}><StatusBar barStyle={theme.statusBar} backgroundColor={theme.background} /><AddFoodModal visible={isFoodModalVisible} onClose={() => setFoodModalVisible(false)} onFoodSelect={handleFoodSelectedFromModal} mealKey={currentMealKey} theme={theme} t={t} isRTL={isRTL} /><ScrollView contentContainerStyle={styles.container}><DateNavigator selectedDate={selectedDate} onDateSelect={setSelectedDate} referenceToday={referenceToday} theme={theme} t={t} isRTL={isRTL} language={language} />{!isToday && (<View style={styles.readOnlyBanner(theme)}><Ionicons name="information-circle-outline" size={20} color={theme.white} style={{ marginEnd: 8 }} /><Text style={styles.readOnlyBannerText(theme)}>{t('readOnlyBanner')}</Text></View>)}<SummaryCard data={{ food: calculatedTotals.food, exercise: totalExerciseCalories }} dailyGoal={dailyGoal} theme={theme} t={t} /><NutrientSummaryCard data={{ protein: { consumed: calculatedTotals.protein, goal: macroGoals.protein }, carbs: { consumed: calculatedTotals.carbs, goal: macroGoals.carbs }, fat: { consumed: calculatedTotals.fat, goal: macroGoals.fat }, fiber: { consumed: calculatedTotals.fiber, goal: NUTRIENT_GOALS.fiber }, sugar: { consumed: calculatedTotals.sugar, goal: NUTRIENT_GOALS.sugar }, sodium: { consumed: calculatedTotals.sodium, goal: NUTRIENT_GOALS.sodium }, }} theme={theme} t={t} /><DashboardGrid weight={dailyData.displayWeight || 0} water={dailyData.water || 0} waterGoal={waterGoal} totalExerciseCalories={totalExerciseCalories} onWeightPress={() => navigation.navigate('Weight')} onWaterPress={() => navigation.navigate('Water', { dateKey: formatDateKey(selectedDate) })} onWorkoutPress={() => navigation.navigate('WorkoutLog', { dateKey: formatDateKey(selectedDate) })} navigation={navigation} theme={theme} t={t} /><DailyFoodLog items={allFoodItems} onPress={() => navigation.navigate('FoodLogDetail', { items: allFoodItems, dateString: selectedDate.toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) })} theme={theme} t={t} isRTL={isRTL} /><View style={styles.sectionHeaderContainer}><Text style={styles.sectionTitle(theme)}>{t('mealSectionsTitle')}</Text><Text style={styles.sectionDescription(theme)}>{t('mealSectionsDesc')}</Text></View><MealLoggingSection title={t('breakfast')} iconName="sunny-outline" items={dailyData.breakfast || []} onAddPress={handleOpenModal} mealKey="breakfast" isEditable={isToday} theme={theme} t={t} /><MealLoggingSection title={t('lunch')} iconName="partly-sunny-outline" items={dailyData.lunch || []} onAddPress={handleOpenModal} mealKey="lunch" isEditable={isToday} theme={theme} t={t} /><MealLoggingSection title={t('dinner')} iconName="moon-outline" items={dailyData.dinner || []} onAddPress={handleOpenModal} mealKey="dinner" isEditable={isToday} theme={theme} t={t} /><MealLoggingSection title={t('snacks')} iconName="nutrition-outline" items={dailyData.snacks || []} onAddPress={handleOpenModal} mealKey="snacks" isEditable={isToday} theme={theme} t={t} /></ScrollView></SafeAreaView> ); 
+    return ( <SafeAreaView style={styles.rootContainer(theme)}><StatusBar barStyle={theme.statusBar} backgroundColor={theme.background} /><AddFoodModal visible={isFoodModalVisible} onClose={() => setFoodModalVisible(false)} onFoodSelect={handleFoodSelectedFromModal} mealKey={currentMealKey} theme={theme} t={t} isRTL={isRTL} /><ScrollView contentContainerStyle={styles.container}><DateNavigator selectedDate={selectedDate} onDateSelect={setSelectedDate} referenceToday={referenceToday} theme={theme} t={t} isRTL={isRTL} language={language} />{!isToday && (<View style={styles.readOnlyBanner(theme)}><Ionicons name="information-circle-outline" size={20} color={theme.white} style={{ marginEnd: 8 }} /><Text style={styles.readOnlyBannerText(theme)}>{t('readOnlyBanner')}</Text></View>)}<SummaryCard data={{ food: calculatedTotals.food, exercise: totalExerciseCalories }} dailyGoal={dailyGoal} theme={theme} t={t} />
+    
+    {/* ✅✅✅ <<<--- هذا هو السطر الذي تم تصحيحه ---✅✅✅ */}
+    <NutrientSummaryCard data={{ protein: { consumed: calculatedTotals.protein, goal: macroGoals.protein }, carbs: { consumed: calculatedTotals.carbs, goal: macroGoals.carbs }, fat: { consumed: calculatedTotals.fat, goal: macroGoals.fat }, fiber: { consumed: calculatedTotals.fiber, goal: NUTRIENT_GOALS.fiber }, sugar: { consumed: calculatedTotals.sugar, goal: NUTRIENT_GOALS.sugar }, sodium: { consumed: calculatedTotals.sodium, goal: NUTRIENT_GOALS.sodium }, }} theme={theme} t={t} />
+    
+    <DashboardGrid weight={dailyData.displayWeight || 0} water={dailyData.water || 0} waterGoal={waterGoal} totalExerciseCalories={totalExerciseCalories} onWeightPress={() => navigation.navigate('Weight')} onWaterPress={() => navigation.navigate('Water', { dateKey: formatDateKey(selectedDate) })} onWorkoutPress={() => navigation.navigate('WorkoutLog', { dateKey: formatDateKey(selectedDate) })} navigation={navigation} theme={theme} t={t} /><DailyFoodLog items={allFoodItems} onPress={() => navigation.navigate('FoodLogDetail', { items: allFoodItems, dateString: selectedDate.toLocaleDateString(language === 'ar' ? 'ar-EG' : 'en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) })} theme={theme} t={t} isRTL={isRTL} /><View style={styles.sectionHeaderContainer}><Text style={styles.sectionTitle(theme)}>{t('mealSectionsTitle')}</Text><Text style={styles.sectionDescription(theme)}>{t('mealSectionsDesc')}</Text></View><MealLoggingSection title={t('breakfast')} iconName="sunny-outline" items={dailyData.breakfast || []} onAddPress={handleOpenModal} mealKey="breakfast" isEditable={isToday} theme={theme} t={t} /><MealLoggingSection title={t('lunch')} iconName="partly-sunny-outline" items={dailyData.lunch || []} onAddPress={handleOpenModal} mealKey="lunch" isEditable={isToday} theme={theme} t={t} /><MealLoggingSection title={t('dinner')} iconName="moon-outline" items={dailyData.dinner || []} onAddPress={handleOpenModal} mealKey="dinner" isEditable={isToday} theme={theme} t={t} /><MealLoggingSection title={t('snacks')} iconName="nutrition-outline" items={dailyData.snacks || []} onAddPress={handleOpenModal} mealKey="snacks" isEditable={isToday} theme={theme} t={t} /></ScrollView></SafeAreaView> ); 
 }
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -285,21 +275,17 @@ const MagicLineTabBar = ({ state, descriptors, navigation, theme, t, isRTL }) =>
         }; 
         loadProfileImage(); 
     }, []));
-
     const indicatorAnimatedStyle = useAnimatedStyle(() => ({ transform: [{ translateX: translateX.value }] }));
     const routes = isRTL ? [...state.routes].reverse() : state.routes;
-    
     return ( 
         <View style={styles.tabBarContainer(theme)}>
             <View style={styles.animationWrapper}><LeafAnimation trigger={state.index} /></View>
-            
             <Animated.View style={[styles.indicatorContainer, { width: TAB_WIDTH }, indicatorAnimatedStyle]}>
                 <View style={[styles.indicator(theme), { backgroundColor: theme.tabBarIndicator }]}>
                     <View style={[styles.cutout, styles.cutoutLeft(theme)]} />
                     <View style={[styles.cutout, styles.cutoutRight(theme)]} />
                 </View>
             </Animated.View>
-
             {routes.map((route) => { 
                 const descriptor = descriptors[route.key];
                 const { options } = descriptor;
@@ -310,7 +296,6 @@ const MagicLineTabBar = ({ state, descriptors, navigation, theme, t, isRTL }) =>
                         navigation.navigate(route.name); 
                     } 
                 }; 
-                
                 const iconAnimatedStyle = useAnimatedStyle(() => ({
                     transform: [{ translateY: withTiming(isFocused ? -32 : 0, { duration: 500 }) }],
                 }));
@@ -318,9 +303,7 @@ const MagicLineTabBar = ({ state, descriptors, navigation, theme, t, isRTL }) =>
                     opacity: withTiming(isFocused ? 1 : 0, { duration: 500 }),
                     transform: [{ translateY: withTiming(isFocused ? 10 : 20, { duration: 500 }) }],
                 }));
-                
                 const isProfileTab = route.name === 'ProfileStack';
-                
                 return ( 
                     <TouchableOpacity key={route.key} style={[styles.tabItem, { width: TAB_WIDTH, zIndex: 1 }]} onPress={onPress}>
                         <Animated.View style={[styles.tabIconContainer, iconAnimatedStyle]}>
@@ -440,14 +423,19 @@ function MainUIScreen({ appLanguage }) {
           {props => <ReportsStackNavigator {...props} theme={theme} t={t} />}
       </Tab.Screen>
       <Tab.Screen name="Camera" component={CameraScreen} options={{ tabBarLabel: t('cameraTab'), tabBarIconName: 'camera-outline' }} />
-      <Tab.Screen name="ProfileStack" options={{ tabBarLabel: t('profileTab') }}>
+      <Tab.Screen 
+        name="ProfileStack" 
+        options={{ 
+          tabBarLabel: t('profileTab'),
+          unmountOnBlur: true
+        }}
+      >
         {props => <ProfileStackNavigator {...props} theme={theme} t={t} onThemeChange={handleThemeChange} appLanguage={appLanguage} />}
       </Tab.Screen>
     </Tab.Navigator>
   );
 }
 
-// ======================= START: الـ Styles المعدلة =======================
 const styles = { 
     rootContainer: (theme) => ({ flex: 1, backgroundColor: theme.background }), 
     container: { paddingHorizontal: 20, paddingBottom: 80 }, 
@@ -544,6 +532,5 @@ const styles = {
     previewCounterCircle: (theme) => ({ width: 38, height: 38, borderRadius: 19, backgroundColor: theme.progressUnfilled, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: theme.card, }), 
     previewCounterText: (theme) => ({ color: theme.primary, fontWeight: 'bold', fontSize: 12, }),
 };
-// ======================= END: نهاية الـ Styles المعدلة =======================
 
 export default MainUIScreen;
