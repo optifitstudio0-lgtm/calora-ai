@@ -1,3 +1,5 @@
+// MainUIScreen.js (الكود الكامل والنهائي مع تعريف المهمة الخلفية)
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { StyleSheet, View, Text, ScrollView, SafeAreaView, TouchableOpacity, Dimensions, Image, Platform, TextInput, FlatList, ActivityIndicator, Alert, Modal, StatusBar, I18nManager } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -24,39 +26,45 @@ import StepsScreen from './steps';
 import ReportsScreen from './reports';
 import FoodLogDetailScreen from './foodlogdetail';
 import { searchEgyptianFoodsWithImages, supabase } from './supabaseclient';
-
-// --- استيراد الشاشات الحقيقية من ملفاتك ---
 import EditProfileScreen from './editprofile';
 import SettingsScreen from './setting'; 
 import AboutScreen from './about';
-// -------------------------------------------
 
-
-// --- START: تعريف مهمة الخلفية ---
+// ✅ --- START: تعريف مهمة الخلفية لعد الخطوات --- ✅
 const STEPS_NOTIFICATION_TASK = 'steps-notification-task';
 
 TaskManager.defineTask(STEPS_NOTIFICATION_TASK, async () => {
     try {
-        const end = new Date();
-        const start = new Date();
-        start.setHours(0, 0, 0, 0);
-
         const settingsRaw = await AsyncStorage.getItem('reminderSettings');
         const settings = settingsRaw ? JSON.parse(settingsRaw) : {};
         
-        if (!settings.stepsGoal) {
+        if (!settings.stepsGoal || !settings.stepsGoal.enabled) {
+            console.log("Steps goal reminder is disabled in settings. Task will not run.");
             return BackgroundFetch.BackgroundFetchResult.NoData;
         }
 
+        const start = new Date();
+        start.setHours(0, 0, 0, 0);
         const todaySentKey = `@steps_goal_sent_${start.toISOString().slice(0, 10)}`;
         const hasSentToday = await AsyncStorage.getItem(todaySentKey);
+
         if (hasSentToday) {
+            console.log("Steps goal notification already sent for today. Task will not run.");
             return BackgroundFetch.BackgroundFetchResult.NoData;
         }
 
         const savedGoal = await AsyncStorage.getItem('stepsGoal');
         const goal = savedGoal ? parseInt(savedGoal, 10) : 10000;
-        const { steps } = await Pedometer.getStepCountAsync(start, end);
+        
+        const isAvailable = await Pedometer.isAvailableAsync();
+        if (!isAvailable) {
+            console.error("Pedometer is not available on this device. Task failed.");
+            return BackgroundFetch.BackgroundFetchResult.Failed;
+        }
+
+        const { steps } = await Pedometer.getStepCountAsync(start, new Date());
+
+        console.log(`[Background Task] Current steps: ${steps}, Goal: ${goal}`);
 
         if (steps >= goal) {
             await Notifications.scheduleNotificationAsync({
@@ -65,19 +73,20 @@ TaskManager.defineTask(STEPS_NOTIFICATION_TASK, async () => {
                     body: `رائع! لقد حققت هدفك اليومي وهو ${goal.toLocaleString()} خطوة.`,
                     sound: true,
                 },
-                trigger: null,
+                trigger: null, // send immediately
             });
             await AsyncStorage.setItem(todaySentKey, 'true');
+            console.log("[Background Task] Goal reached! Notification sent.");
             return BackgroundFetch.BackgroundFetchResult.NewData;
         }
         
         return BackgroundFetch.BackgroundFetchResult.NoData;
     } catch (error) {
-        console.error("Error in background task:", error);
+        console.error("Error occurred in background steps task:", error);
         return BackgroundFetch.BackgroundFetchResult.Failed;
     }
 });
-// --- END: نهاية تعريف مهمة الخلفية ---
+// ✅ --- END: نهاية تعريف المهمة --- ✅
 
 const lightTheme = {
     primary: '#388E3C', background: '#E8F5E9', card: '#FFFFFF', textPrimary: '#212121', textSecondary: '#757575', progressUnfilled: '#D6EAD7', disabled: '#BDBDBD', carbs: '#007BFF', protein: '#FF7043', fat: '#FFC107', fiber: '#4CAF50', sugar: '#9C27B0', sodium: '#2196F3', overLimit: '#D32F2F', tabBarBackground: '#FFFFFF', tabBarIndicator: '#4CAF50', tabBarIcon: '#222327', white: '#FFFFFF', readOnlyBanner: '#FFA000', indicatorDot: '#1B5E20', statusBar: 'dark-content',
@@ -385,7 +394,7 @@ function MainUIScreen({ appLanguage }) {
   const [theme, setTheme] = useState(lightTheme);
   const [language, setLanguage] = useState(appLanguage);
   const [isRTL, setIsRTL] = useState(I18nManager.isRTL);
-  const [hasProgress, setHasProgress] = useState(false); //
+  const [hasProgress, setHasProgress] = useState(false);
   useEffect(() => { 
     setLanguage(appLanguage); 
     setIsRTL(appLanguage === 'ar'); 
@@ -399,18 +408,32 @@ function MainUIScreen({ appLanguage }) {
   const t = useCallback((key, params) => { let string = translations[language]?.[key] || translations['en'][key] || key; if (params) { Object.keys(params).forEach(pKey => { string = string.replace(`{${pKey}}`, params[pKey]); }); } return string; }, [language]);
   const loadSettings = async () => { try { const savedTheme = await AsyncStorage.getItem('isDarkMode'); setTheme(savedTheme === 'true' ? darkTheme : lightTheme); } catch (e) { console.error('Failed to load settings.', e); } };
   useFocusEffect(useCallback(() => { loadSettings(); }, []));
+  
   useEffect(() => {
-    const setupNotificationsAndBackgroundTasks = async () => {
+    const setupInitialTasks = async () => {
       try {
         await registerForPushNotificationsAsync();
         Notifications.setNotificationHandler({ handleNotification: async () => ({ shouldShowAlert: true, shouldPlaySound: true, shouldSetBadge: false, }), });
-        const isTaskRegistered = await TaskManager.isTaskRegisteredAsync(STEPS_NOTIFICATION_TASK);
-        if (!isTaskRegistered) {
-          await BackgroundFetch.registerTaskAsync(STEPS_NOTIFICATION_TASK, { minimumInterval: 15 * 60, stopOnTerminate: false, startOnBoot: true, });
+        
+        const settingsRaw = await AsyncStorage.getItem('reminderSettings');
+        const settings = settingsRaw ? JSON.parse(settingsRaw) : {};
+
+        if(settings.stepsGoal?.enabled) {
+            const isTaskRegistered = await TaskManager.isTaskRegisteredAsync(STEPS_NOTIFICATION_TASK);
+            if (!isTaskRegistered) {
+                await BackgroundFetch.registerTaskAsync(STEPS_NOTIFICATION_TASK, {
+                    minimumInterval: 15 * 60,
+                    stopOnTerminate: false,
+                    startOnBoot: true,
+                });
+                console.log("Steps background task registered on app start because it was enabled.");
+            }
         }
-      } catch (error) { console.error("Error setting up notifications or background tasks:", error); }
+      } catch (error) { 
+        console.error("Error setting up initial tasks:", error); 
+      }
     };
-    setupNotificationsAndBackgroundTasks();
+    setupInitialTasks();
   }, []);
 
   return (
@@ -425,7 +448,6 @@ function MainUIScreen({ appLanguage }) {
       }}
     >
       <Tab.Screen name="DiaryStack" options={{ tabBarLabel: t('diaryTab'), tabBarIconName: 'journal-outline' }}>
-          {/* ✅✅✅ <<<--- هذا هو السطر الذي تم تصحيحه ---✅✅✅ */}
           {props => <DiaryStackNavigator {...props} setHasProgress={setHasProgress} theme={theme} t={t} isRTL={isRTL} language={language} />}
       </Tab.Screen>
       <Tab.Screen name="ReportsStack" options={{ tabBarLabel: t('reportsTab'), tabBarIconName: 'stats-chart-outline' }}>

@@ -1,4 +1,4 @@
-// SettingsScreen.js (الكود الكامل النهائي بعد الإصلاح)
+// SettingsScreen.js (الكود الكامل والنهائي مع الفحص الصحيح)
 
 import React, { useState, useRef, useEffect } from 'react';
 import {
@@ -9,13 +9,12 @@ import {
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
-import * as TaskManager from 'expo-task-manager';
+import * as BackgroundFetch from 'expo-background-fetch';
 import { Pedometer } from 'expo-sensors';
+import * as DevClient from 'expo-dev-client';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import GoogleFit, { Scopes } from 'react-native-google-fit';
-import RNRestart from 'react-native-restart'; // <-- 1. استيراد المكتبة الجديدة
-
-// Assume notificationsdata.js exists in the same directory
+import RNRestart from 'react-native-restart';
 import notificationsData from './notificationsdata'; 
 
 const STEPS_NOTIFICATION_TASK = 'steps-notification-task';
@@ -39,15 +38,14 @@ const translations = {
     exportDataDescription: 'Your entire food log is prepared below as CSV text...',
     exportAllData: 'Prepare Data for Export', copyToClipboard: 'Copy All Text', copied: 'Copied!',
     remindersSaved: 'Reminders Updated',
-    notificationsPermissionTitle: 'Notifications Permission',
-    notificationsPermissionMessage: 'To receive reminders, please enable notifications for this app in your device settings.',
+    notificationsPermissionTitle: 'Permissions Required',
+    notificationsPermissionMessage: 'To enable this feature, please grant notification and motion activity permissions from your phone settings.',
     changeTime: 'Change Time',
     enterNewTime: 'Enter the new time in HH:MM format (e.g., 14:30)',
     error: 'Error',
     invalidTimeFormat: 'Please enter the time in the correct HH:MM format',
-    snackFeatureAlertTitle: "Unsupported Feature",
-    snackTimePickerMessage: "This button works! On a real phone, the native time picker would open here.",
-    snackTaskManagerMessage: "Smart step notifications do not work in the web environment (Expo Snack). Please try on a real device.",
+    unsupportedFeatureTitle: "Unsupported Environment",
+    unsupportedFeatureMessage: "This feature does not work in Expo Go. Please make sure you are running the app's development build.",
     connectedApps: 'Connected Apps',
     googleFit: 'Google Fit',
     connect: 'Connect',
@@ -72,15 +70,12 @@ const translations = {
     exportDataDescription: 'تم تجهيز كامل سجل طعامك في الأسفل كنص CSV...',
     exportAllData: 'تجهيز البيانات للتصدير', copyToClipboard: 'نسخ كل النص', copied: 'تم النسخ!',
     remindersSaved: 'تم تحديث التذكيرات',
-    notificationsPermissionTitle: 'إذن الإشعارات',
-    notificationsPermissionMessage: 'لتلقي التذكيرات، يرجى تمكين الإشعارات لهذا التطبيق في إعدادات جهازك.',
-    changeTime: 'تغيير الوقت',
-    enterNewTime: 'أدخل الوقت الجديد بصيغة HH:MM (مثال: 14:30)',
+    notificationsPermissionTitle: 'صلاحيات مطلوبة',
+    notificationsPermissionMessage: 'لتفعيل هذه الميزة، الرجاء منح صلاحية الوصول للإشعارات والنشاط البدني من إعدادات الهاتف.',
+    unsupportedFeatureTitle: "بيئة غير مدعومة",
+    unsupportedFeatureMessage: "هذه الميزة لا تعمل في Expo Go. الرجاء التأكد من تشغيل نسخة التطوير الخاصة بالتطبيق.",
     error: 'خطأ',
     invalidTimeFormat: 'الرجاء إدخال الوقت بالصيغة الصحيحة HH:MM',
-    snackFeatureAlertTitle: "ميزة غير مدعومة",
-    snackTimePickerMessage: "الزر يعمل! على الهاتف الحقيقي، ستفتح الساعة هنا لتحديد الوقت.",
-    snackTaskManagerMessage: "إشعارات الخطوات الذكية لا تعمل في بيئة الويب (Expo Snack). يرجى التجربة على هاتف حقيقي.",
     connectedApps: 'التطبيقات المرتبطة',
     googleFit: 'Google Fit',
     connect: 'اتصال',
@@ -199,28 +194,15 @@ const SettingsScreen = ({ navigation, onThemeChange, appLanguage }) => {
       const savedTheme = await AsyncStorage.getItem('isDarkMode');
       setIsDarkMode(savedTheme === 'true');
 
-      const checkAuthStatus = async () => {
-          const isAuth = GoogleFit.isAuthorized || false;
-          setIsGoogleFitConnected(isAuth);
-          await AsyncStorage.setItem('isGoogleFitConnected', String(isAuth));
-      };
-      checkAuthStatus();
+      const isAuth = GoogleFit.isAuthorized || false;
+      setIsGoogleFitConnected(isAuth);
 
       const savedRemindersRaw = await AsyncStorage.getItem('reminderSettings');
       if (savedRemindersRaw) {
         try {
           const savedReminders = JSON.parse(savedRemindersRaw);
-          const mergedReminders = { ...defaultReminderSettings };
-          for (const key in mergedReminders) {
-            if (savedReminders[key]) {
-              mergedReminders[key] = { ...mergedReminders[key], ...savedReminders[key] };
-            }
-          }
-          setReminders(mergedReminders);
-        } catch (e) {
-          console.error("Failed to parse reminder settings:", e);
-          setReminders(defaultReminderSettings);
-        }
+          setReminders(prev => ({...defaultReminderSettings, ...prev, ...savedReminders}));
+        } catch (e) { console.error("Failed to parse reminder settings:", e); setReminders(defaultReminderSettings); }
       } else {
         setReminders(defaultReminderSettings);
       }
@@ -272,72 +254,56 @@ const SettingsScreen = ({ navigation, onThemeChange, appLanguage }) => {
     }
   };
 
+  // ✅ --- الكود النهائي والمهم لتفعيل الإشعار --- ✅
   const handleToggleStepsReminder = async () => {
-    const newReminders = { ...reminders, stepsGoal: { enabled: !reminders.stepsGoal.enabled } };
+    // الخطوة 1: الفحص القاطع للبيئة
+    if (!DevClient.isDevelopmentBuild()) {
+        Alert.alert(t('unsupportedFeatureTitle'), t('unsupportedFeatureMessage'));
+        return; // أوقف كل شيء هنا
+    }
+
+    const isEnabling = !reminders.stepsGoal?.enabled;
+    const newReminders = { ...reminders, stepsGoal: { enabled: isEnabling } };
+    
+    // تحديث الواجهة فورًا
     setReminders(newReminders);
-    if (newReminders.stepsGoal.enabled) {
-        if (!TaskManager || typeof TaskManager.registerTaskAsync !== 'function') {
-            Alert.alert(t('snackFeatureAlertTitle'), "Step counter background task is not supported in this environment. Please use a custom development build of the app.");
-            setReminders(reminders); 
-            return;
-        }
+
+    if (isEnabling) {
         const { status: notificationStatus } = await Notifications.requestPermissionsAsync();
         const { status: pedometerStatus } = await Pedometer.requestPermissionsAsync();
+
         if (notificationStatus !== 'granted' || pedometerStatus !== 'granted') {
             Alert.alert(t('notificationsPermissionTitle'), t('notificationsPermissionMessage'));
-            const revertedState = { ...newReminders, stepsGoal: { enabled: false } };
-            setReminders(revertedState);
-            await AsyncStorage.setItem('reminderSettings', JSON.stringify(revertedState));
+            setReminders(reminders); // أرجع الحالة القديمة
             return;
         }
-        await TaskManager.registerTaskAsync(STEPS_NOTIFICATION_TASK, { minimumInterval: 15 * 60, });
+
+        try {
+            await BackgroundFetch.registerTaskAsync(STEPS_NOTIFICATION_TASK, {
+                minimumInterval: 15 * 60, // 15 دقيقة
+                stopOnTerminate: false,
+                startOnBoot: true,
+            });
+            await AsyncStorage.setItem('reminderSettings', JSON.stringify(newReminders));
+            Alert.alert(t('remindersSaved'));
+        } catch (error) {
+            console.error("Failed to register background task:", error);
+            Alert.alert(t('error'), 'فشل تسجيل المهمة في الخلفية.');
+            setReminders(reminders);
+        }
     } else {
-        if (TaskManager && typeof TaskManager.unregisterTaskAsync === 'function') {
-            await TaskManager.unregisterTaskAsync(STEPS_NOTIFICATION_TASK);
+        try {
+            await BackgroundFetch.unregisterTaskAsync(STEPS_NOTIFICATION_TASK);
+            await AsyncStorage.setItem('reminderSettings', JSON.stringify(newReminders));
+            Alert.alert(t('remindersSaved'));
+        } catch (error) {
+            console.error("Failed to unregister background task:", error);
+            Alert.alert(t('error'), 'فشل إلغاء تسجيل المهمة.');
+            setReminders(reminders);
         }
     }
-    await AsyncStorage.setItem('reminderSettings', JSON.stringify(newReminders));
-    Alert.alert(t('remindersSaved'));
   };
-
-  const showTimePicker = (key) => {
-    if (Platform.OS === 'web') {
-        Alert.alert(t('snackFeatureAlertTitle'), t('snackTimePickerMessage'));
-        return;
-    }
-    const reminderTime = reminders[key].time;
-    const [hour, minute] = reminderTime.split(':').map(Number);
-    const newTempTime = new Date();
-    newTempTime.setHours(hour, minute);
-    setTempTime(newTempTime);
-    setCurrentReminderKey(key);
-    setTimePickerVisible(true);
-  };
-
-  const handleTimeChange = async (event, selectedDate) => {
-      setTimePickerVisible(Platform.OS === 'ios');
-      if (event.type === 'dismissed' || !selectedDate) return;
-      const newTime = selectedDate;
-      if (Platform.OS === 'android') {
-        const formattedTime = formatTime(newTime);
-        const updatedReminders = { ...reminders, [currentReminderKey]: { ...reminders[currentReminderKey], time: formattedTime } };
-        setReminders(updatedReminders);
-        await AsyncStorage.setItem('reminderSettings', JSON.stringify(updatedReminders));
-        await scheduleAllNotifications(updatedReminders, activeLanguage);
-      } else {
-        setTempTime(newTime);
-      }
-  };
-
-  const saveIosTime = async () => {
-      const formattedTime = formatTime(tempTime);
-      const updatedReminders = { ...reminders, [currentReminderKey]: { ...reminders[currentReminderKey], time: formattedTime } };
-      setReminders(updatedReminders);
-      await AsyncStorage.setItem('reminderSettings', JSON.stringify(updatedReminders));
-      await scheduleAllNotifications(updatedReminders, activeLanguage);
-      setTimePickerVisible(false);
-  };
-
+  
   const handleToggleReminder = async (key) => {
     if (key === 'stepsGoal') {
       await handleToggleStepsReminder();
@@ -359,7 +325,6 @@ const SettingsScreen = ({ navigation, onThemeChange, appLanguage }) => {
     }
   };
 
-  // ✅✅✅ التعديل الجوهري هنا ✅✅✅
   const handleSaveLanguage = async () => {
     if (activeLanguage === selectedLanguage) {
       setCurrentView('main');
@@ -369,20 +334,10 @@ const SettingsScreen = ({ navigation, onThemeChange, appLanguage }) => {
       await AsyncStorage.setItem('appLanguage', selectedLanguage);
       const isRTL = selectedLanguage === 'ar';
       I18nManager.forceRTL(isRTL);
-
-      // اعرض رسالة للمستخدم إن التطبيق هيعمل إعادة تشغيل ثم نفذ الأمر
       Alert.alert(
         t('languageSaved', selectedLanguage),
         t('languageSettingsUpdated', selectedLanguage),
-        [
-          {
-            text: 'OK',
-            // عند الضغط على "OK"، اعمل إعادة تشغيل كاملة للتطبيق
-            onPress: () => {
-              RNRestart.Restart(); // <-- 2. استخدام المكتبة الصحيحة
-            },
-          },
-        ],
+        [{ text: 'OK', onPress: () => { RNRestart.Restart(); } }],
         { cancelable: false }
       );
     } catch (e) {
@@ -479,6 +434,44 @@ const SettingsScreen = ({ navigation, onThemeChange, appLanguage }) => {
     }
   };
 
+  const showTimePicker = (key) => {
+    if (Platform.OS === 'web') {
+        Alert.alert("Unsupported Feature", "Time picker is not available in the web environment.");
+        return;
+    }
+    const reminderTime = reminders[key].time;
+    const [hour, minute] = reminderTime.split(':').map(Number);
+    const newTempTime = new Date();
+    newTempTime.setHours(hour, minute);
+    setTempTime(newTempTime);
+    setCurrentReminderKey(key);
+    setTimePickerVisible(true);
+  };
+
+  const handleTimeChange = async (event, selectedDate) => {
+      setTimePickerVisible(Platform.OS === 'ios');
+      if (event.type === 'dismissed' || !selectedDate) return;
+      const newTime = selectedDate;
+      if (Platform.OS === 'android') {
+        const formattedTime = formatTime(newTime);
+        const updatedReminders = { ...reminders, [currentReminderKey]: { ...reminders[currentReminderKey], time: formattedTime } };
+        setReminders(updatedReminders);
+        await AsyncStorage.setItem('reminderSettings', JSON.stringify(updatedReminders));
+        await scheduleAllNotifications(updatedReminders, activeLanguage);
+      } else {
+        setTempTime(newTime);
+      }
+  };
+
+  const saveIosTime = async () => {
+      const formattedTime = formatTime(tempTime);
+      const updatedReminders = { ...reminders, [currentReminderKey]: { ...reminders[currentReminderKey], time: formattedTime } };
+      setReminders(updatedReminders);
+      await AsyncStorage.setItem('reminderSettings', JSON.stringify(updatedReminders));
+      await scheduleAllNotifications(updatedReminders, activeLanguage);
+      setTimePickerVisible(false);
+  };
+
   const renderContent = () => {
     if (currentView === 'notifications') {
       return (
@@ -492,7 +485,7 @@ const SettingsScreen = ({ navigation, onThemeChange, appLanguage }) => {
             <SettingsToggleItem icon="cup-water" label={t('waterReminder')} value={reminders.water.enabled} onValueChange={() => handleToggleReminder('water')} theme={theme} isRTL={isRTL} />
             <SettingsToggleItem icon="scale-bathroom" label={t('weighInReminder')} value={reminders.weighIn.enabled} onValueChange={() => handleToggleReminder('weighIn')} time={reminders.weighIn.time} onTimePress={() => showTimePicker('weighIn')} theme={theme} isRTL={isRTL} />
             <SettingsToggleItem icon="dumbbell" label={t('workoutReminder')} value={reminders.workout.enabled} onValueChange={() => handleToggleReminder('workout')} time={reminders.workout.time} onTimePress={() => showTimePicker('workout')} theme={theme} isRTL={isRTL} />
-            <SettingsToggleItem icon="walk" label={t('stepsGoalReminder')} description={t('stepsGoalReminderDesc')} value={reminders.stepsGoal.enabled} onValueChange={() => handleToggleReminder('stepsGoal')} theme={theme} isRTL={isRTL} />
+            <SettingsToggleItem icon="walk" label={t('stepsGoalReminder')} description={t('stepsGoalReminderDesc')} value={reminders.stepsGoal?.enabled || false} onValueChange={() => handleToggleReminder('stepsGoal')} theme={theme} isRTL={isRTL} />
         </>
       );
     }
