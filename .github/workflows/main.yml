@@ -50,4 +50,4 @@ jobs:
           BUILD_URL="https://expo.dev/accounts/$(eas whoami --json | jq -r '.account')/projects/$(jq -r '.expo.slug' app.json)/builds"
           gh pr comment ${{ github.event.pull_request.number }} --body "🚀 A new Android build has been started. You can track its progress here: $BUILD_URL" || echo "Not a PR, skipping comment."
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
