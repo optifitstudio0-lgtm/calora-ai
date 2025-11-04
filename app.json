@@ -47,15 +47,10 @@
         "expo-camera",
         {
           "cameraPermission": "Allow Calora AI to access your camera to scan meals and barcodes.",
-          "microphonePermission": "Allow Calora AI to access your microphone for camera features."
+          "microphonePermission": "Allow Cal-ora AI to access your microphone for camera features."
         }
       ],
       "react-native-google-fit"
-    ],
-    "extra": {
-      "eas": {
-        "projectId": "6b2e1016-931d-40d3-9c99-75f3f65d1bf5"
-      }
-    }
+    ]
   }
 }
